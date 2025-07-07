@@ -1,7 +1,7 @@
 /***************************************************************************
   This is a library for the BME280 humidity, temperature & pressure sensor
 
-  Designed specifically to work with the Adafruit BME280 Breakout
+  Designed specifically to work with the Adafruit BME280https://github.com/Pwnsat/FlatSat_Firmware/tree/main Breakout
   ----> http://www.adafruit.com/products/2652
 
   These sensors use I2C or SPI to communicate, 2 or 4 pins are required
@@ -42,9 +42,7 @@ void setup() {
     unsigned status;
     
     // default settings
-    status = bme.begin();  
-    // You can also pass in a Wire library object like &Wire2
-    // status = bme.begin(0x76, &Wire2)
+    status = bme.begin(0x76);  
     if (!status) {
         Serial.println("Could not find a valid BME280 sensor, check wiring, address, sensor ID!");
         Serial.print("SensorID was: 0x"); Serial.println(bme.sensorID(),16);
