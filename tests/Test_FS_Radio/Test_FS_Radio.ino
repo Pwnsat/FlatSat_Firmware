@@ -16,6 +16,16 @@ SPIClass spiRadio(FSPI);
 SX1262 radioUplink = new Module(SX_UL_NSS, SX_UL_IO, SX_UL_RST, SX_UL_BUSY, spiRadio);
 SX1262 radioDownlink = new Module(SX_DL_NSS, SX_DL_IO, SX_DL_RST, SX_DL_BUSY, spiRadio);
 
+volatile bool receivedFlag = false;
+volatile bool enableInterruptRadio = true;
+
+static void radioPacketReceived(void) {
+  if(!enableInterruptRadio) {
+    return;
+  }
+  receivedFlag = true;
+}
+
 void setup() {
   Serial.begin(115200);
   while (!Serial);
@@ -51,7 +61,7 @@ void setup() {
   Serial.println("Iniciando UPL radio...");
   int state = radioUplink.begin();
   radioUplink.setFrequency(915);
-  radioUplink.setSpreadingFactor(11);
+  radioUplink.setSpreadingFactor(12);
   radioUplink.setBandwidth(250);
   radioUplink.setCodingRate(5);
   radioUplink.setPreambleLength(8);
@@ -68,7 +78,7 @@ void setup() {
   Serial.println("Iniciando DPL radio...");
   state = radioDownlink.begin();
   radioDownlink.setFrequency(915);
-  radioDownlink.setSpreadingFactor(11);
+  radioDownlink.setSpreadingFactor(12);
   radioDownlink.setBandwidth(250);
   radioDownlink.setCodingRate(5);
   radioDownlink.setPreambleLength(8);
@@ -81,22 +91,31 @@ void setup() {
     Serial.print("Error al iniciar DPL radio: ");
     Serial.println(state);
   }
-
-  radioDownlink.startReceive();
 }
 
 void loop() {
-  radioDownlink.transmit("Flatsat alive!");
+  radioUplink.transmit("Flatsat alive!");
+  radioDownlink.startReceive(100);
   String data;
-  int err = radioDownlink.readData(data);
-  if (err == RADIOLIB_ERR_NONE){
-    Serial.println("Data:");
+  int state = radioDownlink.readData(data);
+
+  if (state == RADIOLIB_ERR_NONE) {
+    Serial.println(F("[SX1262] Received packet"));
+    Serial.print(F("[SX1262] Data: "));
     Serial.println(data);
-  } else if (err == RADIOLIB_ERR_CRC_MISMATCH) {
-    Serial.println("CRC Error");
-  }else{
-    Serial.print("Err: ");
-    Serial.println(err);
+    Serial.print(F("[SX1262] RSSI: "));
+    Serial.print(radioDownlink.getRSSI());
+    Serial.println(F(" dBm"));
+    Serial.print(F("[SX1262] SNR: "));
+    Serial.print(radioDownlink.getSNR());
+    Serial.println(F(" dB"));
+
+  } else if (state == RADIOLIB_ERR_CRC_MISMATCH) {
+    Serial.println("[SX1262] CRC Error");
+  } else {
+    Serial.print("[SX1262] Error: ");
+    Serial.println(state);
+
   }
   delay(1000);
 }
