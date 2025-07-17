@@ -2,7 +2,9 @@
 
 Firmware for the FlatSat v0.1
 
-# Tests
+# Test
+
+With arduino upload with the `Default with spiffs` partition scheme
 
 ## RADIO
 

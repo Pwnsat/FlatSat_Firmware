@@ -125,7 +125,7 @@ void setup(void) {
   bootLED();
   
   initMPU();
-  
+  initBME();
   
   delay(100);
 }
