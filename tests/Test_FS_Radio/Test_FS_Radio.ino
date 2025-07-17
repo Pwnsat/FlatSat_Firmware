@@ -1,3 +1,6 @@
+/* Test firmware for SX1262 
+  PWNSAT Project 2025
+*/
 #include <RadioLib.h>
 
 #define SX_UL_NSS   D2  // NSS1 - NSS2=D2
