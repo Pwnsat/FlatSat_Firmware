@@ -17,7 +17,6 @@
 // Sensor Specific
 #define SEALEVELPRESSURE_HPA (1013.25)
 // Telemetry Structure
-#define SPACECRAFT_ID "COSMOS1"
 #define TM_SEPARATOR ","
 #define SENSOR_SEPARATOR ";"
 
@@ -180,7 +179,7 @@ void setup() {
   Serial.println("[SYS] Radio Downlink init");
   state = downlink.begin();
   if (state== RADIOLIB_ERR_NONE){
-    Serial.println("[SYS] Radio Uplink OK");
+    Serial.println("[SYS] Radio Downlink OK");
   }else{
     Serial.print("[SYS] Radio Downlink Error: ");
     Serial.println(state);
