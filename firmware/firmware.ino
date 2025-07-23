@@ -45,6 +45,7 @@ Adafruit_BME280 bme;
 SX1262 uplink = new Module(SX_NSS_1, SX_BUSY_1, -1, -1);
 SX1262 downlink = new Module(SX_NSS_2, SX_BUSY_2, -1, -1);
 
+const uint8_t SPACECRAFT_ID = 0x01;
 
 static sensor_status_t initMPU(){
   Serial.println("[SYS - MPU] MPU6050 Init");
@@ -72,6 +73,64 @@ static sensor_status_t initBME(){
   }
   Serial.println("[MPU] MPU6050 Found!");
   return SENSOR_OK;
+}
+
+int16_t scaleFloatToInt16(float value, float min, float max) {
+  if (value < min) value = min;
+  if (value > max) value = max;
+  float normalized = (value - min) / (max - min);
+  return (int16_t)(normalized * 65535.0f - 32768.0f);
+}
+
+uint16_t scaleFloatToUInt16(float value, float min, float max) {
+  if (value < min) value = min;
+  if (value > max) value = max;
+  float normalized = (value - min) / (max - min);
+  return (uint16_t)(normalized * 65535.0f);
+}
+
+void appendInt16(uint8_t* buffer, uint8_t& index, int16_t value) {
+  buffer[index++] = (value >> 8) & 0xFF;
+  buffer[index++] = value & 0xFF;
+}
+
+void appendUInt16(uint8_t* buffer, uint8_t& index, uint16_t value) {
+  buffer[index++] = (value >> 8) & 0xFF;
+  buffer[index++] = value & 0xFF;
+}
+
+void appendUInt8(uint8_t* buffer, uint8_t& index, uint8_t value) {
+  buffer[index++] = value;
+}
+
+void readMPU_binary(uint8_t* buffer, uint8_t& index) {
+  sensors_event_t a, g, temp;
+  if (!mpu.getEvent(&a, &g, &temp)) {
+    appendUInt8(buffer, index, 0); // Status FAIL
+    return;
+  }
+
+  appendUInt8(buffer, index, 1); // Status OK
+
+  appendInt16(buffer, index, scaleFloatToInt16(a.acceleration.x, -16, 16));
+  appendInt16(buffer, index, scaleFloatToInt16(a.acceleration.y, -16, 16));
+  appendInt16(buffer, index, scaleFloatToInt16(a.acceleration.z, -16, 16));
+  appendInt16(buffer, index, scaleFloatToInt16(g.gyro.x, -250, 250));
+  appendInt16(buffer, index, scaleFloatToInt16(g.gyro.y, -250, 250));
+  appendInt16(buffer, index, scaleFloatToInt16(g.gyro.z, -250, 250));
+  appendInt16(buffer, index, scaleFloatToInt16(temp.temperature, -40, 85));
+}
+
+void readBME_binary(uint8_t* buffer, uint8_t& index) {
+  float temp = bme.readTemperature();
+  float pressure = bme.readPressure() / 100.0F; // hPa
+  float altitude = bme.readAltitude(SEALEVELPRESSURE_HPA);
+  float humidity = bme.readHumidity();
+
+  appendInt16(buffer, index, scaleFloatToInt16(temp, -40, 85));
+  appendUInt16(buffer, index, scaleFloatToUInt16(pressure, 300, 1100));
+  appendInt16(buffer, index, scaleFloatToInt16(altitude, -500, 8000));
+  appendUInt8(buffer, index, (uint8_t)(humidity));
 }
 
 static String readMPU(){
@@ -118,6 +177,36 @@ static String getSensorsTelemetry(){
   String bmeTelemetry = readBME();
   String telemetry = mpuTelemetry;// + SENSOR_SEPARATOR + bmeTelemetry;
   return telemetry;
+}
+
+static void printHexDump(const uint8_t* data, size_t len) {
+  const size_t bytesPerLine = 32;
+  char ascii[bytesPerLine + 1];
+  ascii[bytesPerLine] = '\0';
+
+  for (size_t i = 0; i < len; i++) {
+    if (i % bytesPerLine == 0) {
+      if (i != 0) {
+        Serial.print("  |");
+        Serial.println(ascii);
+      }
+      Serial.printf("%08X  ", (unsigned int)i);
+    }
+
+    Serial.printf("%02X ", data[i]);
+    ascii[i % bytesPerLine] = (data[i] >= 32 && data[i] <= 126) ? data[i] : '.';
+  }
+
+  size_t remaining = len % bytesPerLine;
+  if (remaining > 0) {
+    for (size_t i = remaining; i < bytesPerLine; i++) {
+      Serial.print("   ");
+    }
+  }
+
+  Serial.print("  |");
+  ascii[remaining == 0 ? bytesPerLine : remaining] = '\0';
+  Serial.println(ascii);
 }
 
 static void printStringHexDump(const String& input) {
@@ -198,30 +287,43 @@ void setup() {
 }
 
 void loop() {
-  String telemetry = getSensorsTelemetry();
-  Serial.print("[SYS - Radio] Transmiting: ");
-  Serial.println(telemetry);
-  int state = uplink.transmit(telemetry);
+  // String telemetry = getSensorsTelemetry();
+
+  uint8_t payload[64]; // o el tamaño que se necesite
+  uint8_t idx = 0;
+
+  payload[idx++] = SPACECRAFT_ID;
+
+  readMPU_binary(payload, idx);
+  readBME_binary(payload, idx);
+
+  int state = uplink.transmit(payload, idx);
   if (state == RADIOLIB_ERR_NONE){
-    Serial.print("[SYS - Radio] Transmit: ");
-    Serial.println(telemetry);
+    Serial.print("[SYS - Radio] Transmited: ");
+    Serial.write(payload, idx);
+    Serial.println();
   }else{
     Serial.print("[SYS - Radio] Transmit Error: ");
     Serial.println(state);
   }
   delay(2000);
-  String data;
-  state = downlink.readData(data);
+  int recvLen = downlink.getPacketLength();
+  byte byteArr[recvLen];
+  state = downlink.readData(byteArr, recvLen);
   if (state == RADIOLIB_ERR_NONE){
-    Serial.println();
-    Serial.print("[SYS - Radio] Recv: ");
-    Serial.println(data);
-    Serial.print("[SYS - Radio] RSSI: ");
-    Serial.println(downlink.getRSSI());
-    Serial.print("[SYS - Radio] SNR: ");
-    Serial.println(downlink.getSNR());
-    printStringHexDump(data);
-    Serial.println();
+    if (byteArr[0] != SPACECRAFT_ID){
+      Serial.println();
+      Serial.print("[SYS - Radio] Recv: ");
+      Serial.write(byteArr, recvLen);
+      Serial.println();
+      Serial.print("[SYS - Radio] RSSI: ");
+      Serial.println(downlink.getRSSI());
+      Serial.print("[SYS - Radio] SNR: ");
+      Serial.println(downlink.getSNR());
+      // printStringHexDump(data);
+      printHexDump(byteArr, recvLen);
+      Serial.println();
+    }
   }else{
     Serial.print("[SYS - Radio] Recv Error: ");
     Serial.println(state);
