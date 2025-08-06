@@ -14,6 +14,7 @@
 #define SX_BUSY_1 D11
 #define SX_NSS_2  D2
 #define SX_BUSY_2 D12
+#define SX_DIO1 D19
 // Sensor Specific
 #define SEALEVELPRESSURE_HPA (1013.25)
 // Telemetry Structure
@@ -108,6 +109,8 @@ Adafruit_MPU6050 mpu;
 Adafruit_BME280 bme;
 
 SX1262 uplink = new Module(SX_NSS_1, SX_BUSY_1, -1, -1);
+
+// SX1262 downlink = new Module(SX_NSS_2, SX_DIO1, -1, SX_BUSY_2);
 SX1262 downlink = new Module(SX_NSS_2, SX_BUSY_2, -1, -1);
 
 const uint8_t SPACECRAFT_ID = 0x01;
@@ -115,12 +118,27 @@ const uint8_t SPACECRAFT_ID = 0x01;
 static uint16_t counter_tc = 0;
 static uint16_t counter_tm = 0;
 
+const unsigned long interval = 10000;    // 30 s interval to send message
+unsigned long previousMillis = 0;  // will store last time message sent
+
+static bool send_tm = false;
+
+volatile bool receivedFlag = false;
+volatile bool enableInterruptRadio = true;
+
+void setFlag(void) {
+  if(!enableInterruptRadio) {
+    return;
+  }
+  receivedFlag = true;
+}
+
 static int build_packet(spp_packet_t* space_packet, packet_type_t type, grouping_flag_t flag, uint16_t apid, uint16_t sequence_count, const uint8_t* payload, uint16_t payload_len) {
   memset(space_packet, 0, sizeof(spp_packet_t));
   space_packet->header.packetid = (CCSDS_VERSION << 13) | (type << 11) | (0 << 10) | (apid & 0x7FF); // Secondary Header Flag = 0; By now hardcoded
   space_packet->header.packet_sequence = (flag << 14) | (sequence_count & 0x3FFF);
   uint16_t total_payload_len = payload_len;
-  space_packet->header.length = total_payload_len - 1;
+  space_packet->header.length = total_payload_len;
   
   if (payload_len > 0 && payload != NULL){
     if (total_payload_len > MAX_SPP_PACKET_SIZE) return SPP_ERROR_PACKET_LEN;
@@ -437,6 +455,8 @@ void setup() {
   uplink.setPreambleLength(8);
   uplink.setCodingRate(5);
 
+  delay(1000);
+
   Serial.println("[SYS] Radio Downlink init");
   state = downlink.begin();
   if (state== RADIOLIB_ERR_NONE){
@@ -451,6 +471,7 @@ void setup() {
   downlink.setPreambleLength(8);
   downlink.setCodingRate(5);
 
+  downlink.setPacketReceivedAction(setFlag);
   downlink.startReceive();
 
   Serial.println("[SYS] Init sensors...");
@@ -459,38 +480,99 @@ void setup() {
 }
 
 void loop() {
-  // String telemetry = getSensorsTelemetry();
-  uint8_t payload[30];
-  uint8_t idx = 0;
+  if(millis() - previousMillis > interval){
+    previousMillis = millis();
+    uint8_t payload[40];
+    uint8_t idx = 0;
 
-  payload[idx++] = SPACECRAFT_ID;
+    payload[idx++] = SPACECRAFT_ID;
+    spp_packet_t spp_tc;
+    if(send_tm){
+      readMPU_binary(payload, idx);
+      delay(500);
+      readBME_binary(payload, idx);
+      delay(500);
+      spp_build_tm_packet(&spp_tc, APID_SENSORS, payload, idx);
+      send_tm = false;
+    }else{
+      // 48 61 70 70 79 48 61 63 6b 69 6e 67 44 65 66 63 6f 6e
+      payload[idx++] = 0x48;
+      payload[idx++] = 0x61;
+      payload[idx++] = 0x70;
+      payload[idx++] = 0x70;
+      payload[idx++] = 0x79;
+      payload[idx++] = 0x48;
+      payload[idx++] = 0x61;
+      payload[idx++] = 0x63;
+      payload[idx++] = 0x6B;
+      payload[idx++] = 0x69;
+      payload[idx++] = 0x6E;
+      payload[idx++] = 0x67;
+      payload[idx++] = 0x44;
+      payload[idx++] = 0x65;
+      payload[idx++] = 0x66;
+      payload[idx++] = 0x63;
+      payload[idx++] = 0x6F;
+      payload[idx++] = 0x6E;
+      spp_build_tc_packet(&spp_tc, PACKET_TYPE_TC, GROUPING_FLAG_UNSEGMENTED, payload, idx);
+      send_tm = true;
+    }
 
-  readMPU_binary(payload, idx);
-  delay(500);
-  readBME_binary(payload, idx);
-  delay(500);
-  spp_packet_t spp_tc;
-  spp_build_tm_packet(&spp_tc, APID_SENSORS, payload, idx);
-
-  int state = uplink.transmit((uint8_t*)&spp_tc, (6 + spp_tc.header.length + 1));
-  if (state == RADIOLIB_ERR_NONE){
-    Serial.print("[SYS - Radio] Transmited: ");
-    Serial.write(payload, idx);
-    Serial.println();
-    spp_print_packet_details(&spp_tc);
-  }else{
-    Serial.print("[SYS - Radio] Transmit Error: ");
-    Serial.println(state);
-  }
-  delay(2000);
-  int recvLen = downlink.getPacketLength();
-  byte byteArr[recvLen];
-  state = downlink.readData(byteArr, recvLen);
-  if (state == RADIOLIB_ERR_NONE){
-    if (spp_tc.data[0] != SPACECRAFT_ID){
+    int state = downlink.transmit((uint8_t*)&spp_tc, (6 + spp_tc.header.length + 1));
+    if (state == RADIOLIB_ERR_NONE){
+      Serial.print("[SYS - Radio] Transmited: ");
+      Serial.write(payload, idx);
       Serial.println();
+      // spp_print_packet_details(&spp_tc);
+    }else{
+      Serial.print("[SYS - Radio] Transmit Error: ");
+      Serial.println(state);
+    }
+  }
+  // String telemetry = getSensorsTelemetry();
+  // uint8_t payload[30];
+  // uint8_t idx = 0;
+
+  // payload[idx++] = SPACECRAFT_ID;
+  // spp_packet_t spp_tc;
+  // if(send_tm){
+  //   readMPU_binary(payload, idx);
+  //   delay(500);
+  //   readBME_binary(payload, idx);
+  //   delay(500);
+  //   spp_build_tm_packet(&spp_tc, APID_SENSORS, payload, idx);
+  //   send_tm = false;
+  // }else{
+  //   payload[idx++] = 0x01;
+  //   payload[idx++] = 0x02;
+  //   payload[idx++] = 0x03;
+  //   spp_build_tc_packet(&spp_tc, PACKET_TYPE_TC, GROUPING_FLAG_UNSEGMENTED, payload, idx);
+  //   send_tm = true;
+  // }
+
+  // int state = downlink.transmit((uint8_t*)&spp_tc, (6 + spp_tc.header.length + 1));
+  // if (state == RADIOLIB_ERR_NONE){
+  //   Serial.print("[SYS - Radio] Transmited: ");
+  //   Serial.write(payload, idx);
+  //   Serial.println();
+  //   // spp_print_packet_details(&spp_tc);
+  // }else{
+  //   Serial.print("[SYS - Radio] Transmit Error: ");
+  //   Serial.println(state);
+  // }
+  // delay(2000);
+  if(receivedFlag){
+    receivedFlag = false;
+    enableInterruptRadio = false;
+    int recvLen = downlink.getPacketLength();
+    byte byteArr[recvLen];
+    int state = downlink.readData(byteArr, recvLen);
+    if (state == RADIOLIB_ERR_NONE){
       Serial.print("[SYS - Radio] Recv: ");
       Serial.write(byteArr, recvLen);
+      Serial.println();
+      spp_packet_t spp_tc;
+      spp_parse_packet(&spp_tc, byteArr, recvLen);
       Serial.println();
       Serial.print("[SYS - Radio] RSSI: ");
       Serial.println(downlink.getRSSI());
@@ -498,11 +580,18 @@ void loop() {
       Serial.println(downlink.getSNR());
       // printStringHexDump(data);
       printHexDump(byteArr, recvLen);
-      Serial.println();
+      // spp_print_packet_details(&spp_tc);
+      if(spp_tc.data[2] == 0x33 || spp_tc.data[2] == 2 || spp_tc.data[3] == 0x33 || spp_tc.data[3] == 2 || spp_tc.data[2] == 0x32 || spp_tc.data[3] == 0x32){
+        Serial.println("===========================================");
+        Serial.println("PWNSAT!");
+        Serial.println("===========================================");
+      }
+    }else{
+      Serial.print("[SYS - Radio] Recv Error: ");
+      Serial.println(state);
     }
-  }else{
-    Serial.print("[SYS - Radio] Recv Error: ");
-    Serial.println(state);
+    downlink.startReceive();
+    enableInterruptRadio = true;
   }
-  delay(2000);
+  
 }
