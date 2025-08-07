@@ -110,15 +110,15 @@ Adafruit_BME280 bme;
 
 SX1262 uplink = new Module(SX_NSS_1, SX_BUSY_1, -1, -1);
 
-// SX1262 downlink = new Module(SX_NSS_2, SX_DIO1, -1, SX_BUSY_2);
-SX1262 downlink = new Module(SX_NSS_2, SX_BUSY_2, -1, -1);
+SX1262 downlink = new Module(SX_NSS_2, SX_DIO1, -1, SX_BUSY_2);
+// SX1262 downlink = new Module(SX_NSS_2, SX_BUSY_2, -1, -1);
 
 const uint8_t SPACECRAFT_ID = 0x01;
 
 static uint16_t counter_tc = 0;
 static uint16_t counter_tm = 0;
 
-const unsigned long interval = 10000;    // 30 s interval to send message
+const unsigned long interval = 5000;    // 30 s interval to send message
 unsigned long previousMillis = 0;  // will store last time message sent
 
 static bool send_tm = false;
@@ -568,11 +568,17 @@ void loop() {
     byte byteArr[recvLen];
     int state = downlink.readData(byteArr, recvLen);
     if (state == RADIOLIB_ERR_NONE){
-      Serial.print("[SYS - Radio] Recv: ");
-      Serial.write(byteArr, recvLen);
-      Serial.println();
       spp_packet_t spp_tc;
       spp_parse_packet(&spp_tc, byteArr, recvLen);
+      Serial.println();
+      if (spp_tc.data[0] == SPACECRAFT_ID){
+        Serial.println("[SYS - Radio] Same Spacecraft id, skipped packet");
+        downlink.startReceive();
+        enableInterruptRadio = true;
+        return;
+      }
+      Serial.print("[SYS - Radio] Recv: ");
+      Serial.write(byteArr, recvLen);
       Serial.println();
       Serial.print("[SYS - Radio] RSSI: ");
       Serial.println(downlink.getRSSI());
