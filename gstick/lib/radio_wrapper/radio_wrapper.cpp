@@ -1,6 +1,6 @@
-#include <radio_wrapper.h>
-#include <proto.h>
 #include <leds.h>
+#include <proto.h>
+#include <radio_wrapper.h>
 
 #define CTF1 8
 #define CTF2 9
@@ -23,34 +23,35 @@ volatile bool receivedFlag = false;
 volatile bool enableInterruptRadio = true;
 
 static void radio_received_flag(void) {
-  if(!enableInterruptRadio) {
+  if (!enableInterruptRadio) {
     return;
   }
   receivedFlag = true;
 }
 
-static void radioSetInitialConfig(void){
-  radio_cfg.frequency       = 916;
-  radio_cfg.bandwidth       = 250;
+static void radioSetInitialConfig(void) {
+  radio_cfg.frequency = 916;
+  radio_cfg.bandwidth = 250;
   radio_cfg.spreadingFactor = 12;
-  radio_cfg.preambleLength  = 8;
-  radio_cfg.codingRate      = 5;
+  radio_cfg.preambleLength = 8;
+  radio_cfg.codingRate = 5;
 }
 
-void radioConfigure(){
+void radioConfigure() {
   pinMode(CTF1, OUTPUT);
   pinMode(CTF2, OUTPUT);
   pinMode(CTF3, OUTPUT);
 
-  digitalWrite(CTF1,  HIGH);
-  digitalWrite(CTF2,  LOW);
-  digitalWrite(CTF3,  LOW);
-  
+  digitalWrite(CTF1, HIGH);
+  digitalWrite(CTF2, LOW);
+  digitalWrite(CTF3, LOW);
+
   Serial.println("[SYS] Radio Uplink init");
-  int state = radio.begin(916, 250, 12, 5, RADIOLIB_SX126X_SYNC_WORD_PRIVATE, 10, 8, 0, false);
-  if (state== RADIOLIB_ERR_NONE){
+  int state = radio.begin(916, 250, 12, 5, RADIOLIB_SX126X_SYNC_WORD_PRIVATE,
+                          10, 8, 0, false);
+  if (state == RADIOLIB_ERR_NONE) {
     Serial.println("[SYS] Radio Uplink OK");
-  }else{
+  } else {
     Serial.print("[SYS] Radio Uplink Error: ");
     Serial.println(state);
   }
@@ -59,18 +60,18 @@ void radioConfigure(){
   radio.startReceive();
 }
 
-void radioCheckPacketReceived(void){
-  if (receivedFlag){
+void radioCheckPacketReceived(void) {
+  if (receivedFlag) {
     receivedFlag = false;
     enableInterruptRadio = false;
 
     int recvLen = radio.getPacketLength();
     byte byteArr[recvLen];
     int state = radio.readData(byteArr, recvLen);
-    if (state == RADIOLIB_ERR_NONE){
+    if (state == RADIOLIB_ERR_NONE) {
       if (radi_recv_cb != NULL) {
         radi_recv_cb(byteArr, recvLen);
-      }else{
+      } else {
         Serial.print("[SYS - Radio] Recv: ");
         Serial.write(byteArr, recvLen);
         Serial.println();
@@ -79,7 +80,7 @@ void radioCheckPacketReceived(void){
         Serial.print("[SYS - Radio] SNR: ");
         Serial.println(radio.getSNR());
       }
-    }else{
+    } else {
       Serial.print("[SYS - Radio] Recv Error: ");
       Serial.println(state);
     }
@@ -88,16 +89,16 @@ void radioCheckPacketReceived(void){
   }
 }
 
-void radioTransmit(uint8_t* buffer, uint16_t buffer_len){
+void radioTransmit(uint8_t *buffer, uint16_t buffer_len) {
   // Put in a TC frequency
   radio.setFrequency(918);
   ledsBlink(4, 50);
   int state = radio.transmit(buffer, buffer_len);
-  if (state == RADIOLIB_ERR_NONE){
+  if (state == RADIOLIB_ERR_NONE) {
     Serial.print("[SYS - Radio] Transmited: ");
     Serial.write(buffer, buffer_len);
     Serial.println();
-  }else{
+  } else {
     Serial.print("[SYS - Radio] Transmit Error: ");
     Serial.println(state);
   }
@@ -107,6 +108,4 @@ void radioTransmit(uint8_t* buffer, uint16_t buffer_len){
   radio.startReceive();
 }
 
-void radioRegisterCb(radioPacketReceivedCb recv_cb){
-  radi_recv_cb = recv_cb;
-}
+void radioRegisterCb(radioPacketReceivedCb recv_cb) { radi_recv_cb = recv_cb; }

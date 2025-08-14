@@ -8,6 +8,3 @@ void telemetryWorker(void);
 void telemetryPingToGsWorker(void);
 void telemetryIdleWorker(void);
 #endif
-
-
-

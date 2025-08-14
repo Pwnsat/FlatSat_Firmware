@@ -1,29 +1,31 @@
-/* Test firmware for SX1262 
+/* Test firmware for SX1262
   PWNSAT Project 2025
 */
 #include <RadioLib.h>
 
-#define SX_UL_NSS   D2  // NSS1 - NSS2=D2
-#define SX_UL_RST   D19
-#define SX_UL_IO    -1
-#define SX_UL_BUSY  D12 // BUSY1 - BUSY2=D12
-#define SX_DL_NSS   D1  // NSS1 - NSS2=D2
-#define SX_DL_RST   D19
-#define SX_DL_IO    -1
-#define SX_DL_BUSY  D11 // BUSY1 - BUSY2=D12
-#define SX_SCK      D8
-#define SX_MISO     D9
-#define SX_MOSI     D10
+#define SX_UL_NSS D2 // NSS1 - NSS2=D2
+#define SX_UL_RST D19
+#define SX_UL_IO -1
+#define SX_UL_BUSY D12 // BUSY1 - BUSY2=D12
+#define SX_DL_NSS D1   // NSS1 - NSS2=D2
+#define SX_DL_RST D19
+#define SX_DL_IO -1
+#define SX_DL_BUSY D11 // BUSY1 - BUSY2=D12
+#define SX_SCK D8
+#define SX_MISO D9
+#define SX_MOSI D10
 
 SPIClass spiRadio(FSPI);
-SX1262 radioUplink = new Module(SX_UL_NSS, SX_UL_IO, SX_UL_RST, SX_UL_BUSY, spiRadio);
-SX1262 radioDownlink = new Module(SX_DL_NSS, SX_DL_IO, SX_DL_RST, SX_DL_BUSY, spiRadio);
+SX1262 radioUplink =
+    new Module(SX_UL_NSS, SX_UL_IO, SX_UL_RST, SX_UL_BUSY, spiRadio);
+SX1262 radioDownlink =
+    new Module(SX_DL_NSS, SX_DL_IO, SX_DL_RST, SX_DL_BUSY, spiRadio);
 
 volatile bool receivedFlag = false;
 volatile bool enableInterruptRadio = true;
 
 static void radioPacketReceived(void) {
-  if(!enableInterruptRadio) {
+  if (!enableInterruptRadio) {
     return;
   }
   receivedFlag = true;
@@ -31,7 +33,8 @@ static void radioPacketReceived(void) {
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial);
+  while (!Serial)
+    ;
 
   pinMode(SX_UL_NSS, OUTPUT);
   digitalWrite(SX_UL_NSS, HIGH);
@@ -57,7 +60,6 @@ void setup() {
   Serial.print(" Got: 0x");
   Serial.println(response, HEX);
 
-
   Serial.println("Iniciando SPI...");
   spiRadio.begin(SX_SCK, SX_MISO, SX_MOSI);
 
@@ -70,7 +72,7 @@ void setup() {
   radioUplink.setPreambleLength(8);
   radioUplink.setSyncWord(0x12);
   radioUplink.setOutputPower(8);
-  
+
   if (state == RADIOLIB_ERR_NONE) {
     Serial.println("¡Radio OK!");
   } else {
@@ -87,7 +89,7 @@ void setup() {
   radioDownlink.setPreambleLength(8);
   radioDownlink.setSyncWord(0x12);
   radioDownlink.setOutputPower(8);
-  
+
   if (state == RADIOLIB_ERR_NONE) {
     Serial.println("¡Radio OK!");
   } else {
@@ -118,7 +120,6 @@ void loop() {
   } else {
     Serial.print("[SX1262] Error: ");
     Serial.println(state);
-
   }
   delay(1000);
 }

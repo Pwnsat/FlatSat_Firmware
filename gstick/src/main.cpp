@@ -1,13 +1,14 @@
 #include <Arduino.h>
-#include <radio_wrapper.h>
 #include <commands.h>
 #include <leds.h>
+#include <radio_wrapper.h>
 #include <telemetry.h>
 
 void setup() {
   Serial.begin(115200);
-  while(!Serial);
-  
+  while (!Serial)
+    ;
+
   ledsConfigure();
   radioConfigure();
   commandInit();

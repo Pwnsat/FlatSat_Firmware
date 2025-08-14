@@ -5,9 +5,6 @@
 #include <proto.h>
 
 sensor_status_t bmeInit();
-sensor_status_t bmeReadData(uint8_t* buffer, int& offset);
+sensor_status_t bmeReadData(uint8_t *buffer, int &offset);
 
 #endif
-
-
-

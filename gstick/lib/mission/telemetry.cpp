@@ -1,15 +1,15 @@
-#include <telemetry.h>
-#include <spp.h>
 #include <leds.h>
 #include <proto.h>
+#include <spp.h>
+#include <telemetry.h>
 
 #define BINARY_START_BYTE 0x7E
 
-void telemetryHandleRecvData(uint8_t* buffer, uint16_t buffer_len){
+void telemetryHandleRecvData(uint8_t *buffer, uint16_t buffer_len) {
   ledsBlink(2, 50);
   space_packet_t packet;
   int ret = spp_unpack_packet(&packet, buffer, buffer_len);
-  if (ret != SPP_ERROR_NONE){
+  if (ret != SPP_ERROR_NONE) {
     Serial.print("[SYS - MISSION] Error unpacking SPP: ");
     Serial.println(ret);
     return;

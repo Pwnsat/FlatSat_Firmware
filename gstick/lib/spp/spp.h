@@ -4,7 +4,7 @@
  *
  * @author Pwnsat
  * @date 2025-08-7
-*/
+ */
 #ifndef __SPP_H
 #define __SPP_H
 
@@ -43,11 +43,11 @@ enum {
 
 enum {
   /** @brief Continuation segment of User Data */
-  SPP_GROUP_FLAG_CONT        = 0b00,
+  SPP_GROUP_FLAG_CONT = 0b00,
   /** @brief First segment of User Data */
-  SPP_GROUP_FLAG_START       = 0b01,
+  SPP_GROUP_FLAG_START = 0b01,
   /** @brief Last segment User Data */
-  SPP_GROUP_FLAG_END         = 0b10,
+  SPP_GROUP_FLAG_END = 0b10,
   /** @brief Unsegmented User Data */
   SPP_GROUP_FLAG_UNSEGMENTED = 0b11
 };
@@ -58,21 +58,24 @@ enum {
  *                  2 octets              |      2 octets   |       2 octets
  */
 typedef struct {
-  uint16_t identification;  // Version(3) + Type(1) + SecHdr(1) + APID(11)
-  uint16_t sequence;        // Seq flags(2) + Seq count(14)
-  uint16_t length;          // Packet length = (len(payload) + len(secondary_header)) - 1
+  uint16_t identification; // Version(3) + Type(1) + SecHdr(1) + APID(11)
+  uint16_t sequence;       // Seq flags(2) + Seq count(14)
+  uint16_t length; // Packet length = (len(payload) + len(secondary_header)) - 1
 } __attribute__((packed)) sp_primary_header_t;
 
 typedef struct {
   sp_primary_header_t header;
-  uint8_t data[SPP_MAX_PAYLOAD_CHUNK];  // Secondary header + payload
+  uint8_t data[SPP_MAX_PAYLOAD_CHUNK]; // Secondary header + payload
 } __attribute__((packed)) space_packet_t;
 
-int spp_tc_build_packet(space_packet_t* space_packet, uint8_t flag, uint8_t sec_header,
-  uint16_t sec_header_len, uint16_t apid, const uint8_t* data, uint16_t data_len);
-int spp_tm_build_packet(space_packet_t* space_packet, uint8_t flag, uint8_t sec_header,
-  uint16_t sec_header_len, uint16_t apid, const uint8_t* data, uint16_t data_len);
-int spp_idle_build_packet(space_packet_t* space_packet);
-int spp_unpack_packet(space_packet_t* space_packet, const uint8_t* buffer, uint16_t buffer_len);
-void spp_print_packet_details(space_packet_t* packet);
+int spp_tc_build_packet(space_packet_t *space_packet, uint8_t flag,
+                        uint8_t sec_header, uint16_t sec_header_len,
+                        uint16_t apid, const uint8_t *data, uint16_t data_len);
+int spp_tm_build_packet(space_packet_t *space_packet, uint8_t flag,
+                        uint8_t sec_header, uint16_t sec_header_len,
+                        uint16_t apid, const uint8_t *data, uint16_t data_len);
+int spp_idle_build_packet(space_packet_t *space_packet);
+int spp_unpack_packet(space_packet_t *space_packet, const uint8_t *buffer,
+                      uint16_t buffer_len);
+void spp_print_packet_details(space_packet_t *packet);
 #endif

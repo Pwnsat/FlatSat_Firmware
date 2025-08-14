@@ -5,9 +5,6 @@
 #include <proto.h>
 
 sensor_status_t mpuInit();
-sensor_status_t mpuReadData(uint8_t* buffer, int& offset);
+sensor_status_t mpuReadData(uint8_t *buffer, int &offset);
 
 #endif
-
-
-

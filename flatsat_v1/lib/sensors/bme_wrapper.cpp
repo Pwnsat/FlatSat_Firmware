@@ -6,11 +6,11 @@ Adafruit_BME280 bme;
 
 static sensor_status_t bme_status = SENSOR_OK;
 
-sensor_status_t bmeInit(){
+sensor_status_t bmeInit() {
   Serial.println("[SYS - BME] Init");
-  if(!bme.begin(0x76)){
+  if (!bme.begin(0x76)) {
     Serial.println("[SYS - BME] Failed to find BME280 chip");
-    Serial.print("[SYS - BME] SensorID was: 0x"); 
+    Serial.print("[SYS - BME] SensorID was: 0x");
     Serial.println(bme.sensorID(), 16);
     bme_status = SENSOR_FAIL;
     return bme_status;
@@ -20,7 +20,7 @@ sensor_status_t bmeInit(){
   return bme_status;
 }
 
-sensor_status_t bmeReadData(uint8_t* buffer, int& offset) {
+sensor_status_t bmeReadData(uint8_t *buffer, int &offset) {
   if (bme_status == SENSOR_FAIL) {
     buffer[offset++] = TM_SENSOR_STATUS_ERR;
     return bme_status;

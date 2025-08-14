@@ -1,14 +1,15 @@
 #include <Arduino.h>
+#include <bme_wrapper.h>
+#include <commands.h>
+#include <mission.h>
+#include <mpu_wrapper.h>
 #include <radio_wrapper.h>
 #include <workers.h>
-#include <bme_wrapper.h>
-#include <mpu_wrapper.h>
-#include <mission.h>
-#include <commands.h>
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial);
+  while (!Serial)
+    ;
 
   radioConfigure();
   telemetryConfigureSensors();

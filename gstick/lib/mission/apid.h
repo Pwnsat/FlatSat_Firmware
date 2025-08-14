@@ -4,7 +4,7 @@
  *
  * @author Pwnsat
  * @date 2025-08-7
-*/
+ */
 #ifndef __APID_H
 #define __APID_H
 
@@ -29,9 +29,9 @@
 #define APID_TC_SET_ROOT 900
 
 // APID TM for command response
-#define APID_TM_PING_ACK 201     // Response <- APID_TC_PING_SYNC
-#define APID_TM_SEND_STATUS 450  // Response <- APID_TC_GET_STATUS
-#define APID_TM_SEND_TEMP 451    // Response <- APID_TC_GET_TEMP
-#define APID_TM_SEND_GYRO 452    // Response <- APID_TC_GET_GYRO
-#define APID_TM_SEND_TM 453      // Response <- APID_TC_GET_TM
+#define APID_TM_PING_ACK 201    // Response <- APID_TC_PING_SYNC
+#define APID_TM_SEND_STATUS 450 // Response <- APID_TC_GET_STATUS
+#define APID_TM_SEND_TEMP 451   // Response <- APID_TC_GET_TEMP
+#define APID_TM_SEND_GYRO 452   // Response <- APID_TC_GET_GYRO
+#define APID_TM_SEND_TM 453     // Response <- APID_TC_GET_TM
 #endif

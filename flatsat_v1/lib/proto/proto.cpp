@@ -1,15 +1,16 @@
 #include <proto.h>
 
-
-void serialPrintUint8Hex(uint8_t* packet, uint16_t packet_length){
+void serialPrintUint8Hex(uint8_t *packet, uint16_t packet_length) {
   for (int i = 0; i < packet_length + 1; ++i) {
     Serial.printf("%02X ", packet[i]);
-    if ((i + 1) % 16 == 0) Serial.println();
+    if ((i + 1) % 16 == 0)
+      Serial.println();
   }
-  if ((packet_length + 1) % 16 != 0) Serial.println();
+  if ((packet_length + 1) % 16 != 0)
+    Serial.println();
 }
 
-void printHexDump(const uint8_t* data, size_t len) {
+void printHexDump(const uint8_t *data, size_t len) {
   const size_t bytesPerLine = 32;
   char ascii[bytesPerLine + 1];
   ascii[bytesPerLine] = '\0';
@@ -39,13 +40,13 @@ void printHexDump(const uint8_t* data, size_t len) {
   Serial.println(ascii);
 }
 
-void printStringHexDump(const String& input) {
+void printStringHexDump(const String &input) {
   const size_t bytesPerLine = 32;
   char ascii[bytesPerLine + 1];
   ascii[bytesPerLine] = '\0';
 
   size_t len = input.length();
-  const char* data = input.c_str();
+  const char *data = input.c_str();
 
   for (size_t i = 0; i < len; i++) {
     if (i % bytesPerLine == 0) {
@@ -72,7 +73,7 @@ void printStringHexDump(const String& input) {
   Serial.println(ascii);
 }
 
-void floatToBigEndian(float value, uint8_t* bytes) {
+void floatToBigEndian(float value, uint8_t *bytes) {
   proto_float_t temp;
   temp.f = value;
   // reverse bytes

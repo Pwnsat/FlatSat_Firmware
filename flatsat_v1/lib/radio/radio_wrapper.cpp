@@ -1,11 +1,11 @@
-#include <radio_wrapper.h>
 #include <proto.h>
+#include <radio_wrapper.h>
 
-#define SX_NSS_1  2
+#define SX_NSS_1 2
 #define SX_BUSY_1 38
-#define SX_NSS_2  3
+#define SX_NSS_2 3
 #define SX_BUSY_2 39
-#define SX_DIO1   11
+#define SX_DIO1 11
 
 /* Sender - This radio don't support the FSK feature, the have
 a lot of problems and dropped packets - Use this as TM
@@ -32,56 +32,56 @@ volatile bool receivedFlag = false;
 volatile bool enableInterruptRadio = true;
 
 static void radio_received_flag(void) {
-  if(!enableInterruptRadio) {
+  if (!enableInterruptRadio) {
     return;
   }
   receivedFlag = true;
 }
 
-static void radioSetInitialConfig(void){
-  uplink_cfg.frequency       = 916;
-  uplink_cfg.bandwidth       = 250;
+static void radioSetInitialConfig(void) {
+  uplink_cfg.frequency = 916;
+  uplink_cfg.bandwidth = 250;
   uplink_cfg.spreadingFactor = 12;
-  uplink_cfg.preambleLength  = 8;
-  uplink_cfg.codingRate      = 5;
-  uplink_cfg.active          = false;
+  uplink_cfg.preambleLength = 8;
+  uplink_cfg.codingRate = 5;
+  uplink_cfg.active = false;
 
-  downlink_cfg.frequency       = 918;
-  downlink_cfg.bandwidth       = 250;
+  downlink_cfg.frequency = 918;
+  downlink_cfg.bandwidth = 250;
   downlink_cfg.spreadingFactor = 12;
-  downlink_cfg.preambleLength  = 8;
-  downlink_cfg.codingRate      = 5;
-  downlink_cfg.active          = false;
+  downlink_cfg.preambleLength = 8;
+  downlink_cfg.codingRate = 5;
+  downlink_cfg.active = false;
 }
 
-static void radioConfigureFSK(){
+static void radioConfigureFSK() {
   Serial.println("[SYS] Radio Uplink init");
   int state = uplink.beginFSK(916, 4.8, 5, 156.2, 10, 16, 1.6, false);
-  if (state== RADIOLIB_ERR_NONE){
+  if (state == RADIOLIB_ERR_NONE) {
     Serial.println("[SYS] Radio Uplink OK");
-    uplink_cfg.active          = true;
+    uplink_cfg.active = true;
     uint8_t syncWord[] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
     uplink.setSyncWord(syncWord, 8);
     uplink.setCRC(2, 0xFFFF, 0x8005, false); // CRC igual al receptor
-  }else{
+  } else {
     Serial.print("[SYS] Radio Uplink Error: ");
     Serial.println(state);
-    uplink_cfg.active          = false;
+    uplink_cfg.active = false;
   }
 }
 
-void radioConfigure(){
+void radioConfigure() {
   Serial.println("[SYS] Radio Uplink init");
   int state = uplink.begin();
-  if (state== RADIOLIB_ERR_NONE){
+  if (state == RADIOLIB_ERR_NONE) {
     Serial.println("[SYS] Radio Uplink OK");
-    uplink_cfg.active          = true;
-  }else{
+    uplink_cfg.active = true;
+  } else {
     Serial.print("[SYS] Radio Uplink Error: ");
     Serial.println(state);
-    uplink_cfg.active          = false;
+    uplink_cfg.active = false;
   }
-  if (uplink_cfg.active){
+  if (uplink_cfg.active) {
     uplink.setFrequency(916);
     uplink.setBandwidth(250);
     uplink.setSpreadingFactor(12);
@@ -95,15 +95,15 @@ void radioConfigure(){
 
   Serial.println("[SYS] Radio Downlink init");
   state = downlink.begin();
-  if (state== RADIOLIB_ERR_NONE){
+  if (state == RADIOLIB_ERR_NONE) {
     Serial.println("[SYS] Radio Downlink OK");
-    downlink_cfg.active          = true;
-  }else{
+    downlink_cfg.active = true;
+  } else {
     Serial.print("[SYS] Radio Downlink Error: ");
     Serial.println(state);
-    downlink_cfg.active          = false;
+    downlink_cfg.active = false;
   }
-  if (downlink_cfg.active){
+  if (downlink_cfg.active) {
     downlink.setFrequency(918);
     downlink.setBandwidth(250);
     downlink.setSpreadingFactor(12);
@@ -114,19 +114,21 @@ void radioConfigure(){
   }
 }
 
-void radioCheckPacketReceived(void){
-  if (!downlink_cfg.active) { return; }
-  if (receivedFlag){
+void radioCheckPacketReceived(void) {
+  if (!downlink_cfg.active) {
+    return;
+  }
+  if (receivedFlag) {
     receivedFlag = false;
     enableInterruptRadio = false;
 
     int recvLen = downlink.getPacketLength();
     byte byteArr[recvLen];
     int state = downlink.readData(byteArr, recvLen);
-    if (state == RADIOLIB_ERR_NONE){
+    if (state == RADIOLIB_ERR_NONE) {
       if (radi_recv_cb != NULL) {
         radi_recv_cb(byteArr, recvLen);
-      }else{
+      } else {
         Serial.print("[SYS - Radio] Recv: ");
         Serial.write(byteArr, recvLen);
         Serial.println();
@@ -135,34 +137,34 @@ void radioCheckPacketReceived(void){
         Serial.print("[SYS - Radio] SNR: ");
         Serial.println(downlink.getSNR());
       }
-    }else{
+    } else {
       Serial.print("[SYS - Radio] Recv Error: ");
       Serial.println(state);
     }
-    
+
     downlink.startReceive();
     enableInterruptRadio = true;
   }
 }
 
-void radioTransmit(uint8_t* buffer, uint16_t buffer_len){
-  if (!uplink_cfg.active) { return; }
+void radioTransmit(uint8_t *buffer, uint16_t buffer_len) {
+  if (!uplink_cfg.active) {
+    return;
+  }
   int state = uplink.transmit(buffer, buffer_len);
-  if (state == RADIOLIB_ERR_NONE){
+  if (state == RADIOLIB_ERR_NONE) {
     Serial.print("[SYS - Radio] Transmited: ");
     Serial.write(buffer, buffer_len);
     Serial.println();
-  }else{
+  } else {
     Serial.print("[SYS - Radio] Transmit Error: ");
     Serial.println(state);
   }
 }
 
-void radioRegisterCb(radioPacketReceivedCb recv_cb){
-  radi_recv_cb = recv_cb;
-}
+void radioRegisterCb(radioPacketReceivedCb recv_cb) { radi_recv_cb = recv_cb; }
 
-void radioPackConfig(uint8_t* buffer, int& offset){
+void radioPackConfig(uint8_t *buffer, int &offset) {
   proto_float_t freq_b;
   proto_float_t band_b;
 

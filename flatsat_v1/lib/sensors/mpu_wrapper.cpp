@@ -4,7 +4,7 @@ Adafruit_MPU6050 mpu;
 
 static sensor_status_t mpu_status = SENSOR_OK;
 
-sensor_status_t mpuInit(){
+sensor_status_t mpuInit() {
   Serial.println("[SYS - MPU] MPU6050 Init");
   if (!mpu.begin(0x69)) {
     Serial.println("[SYS - MPU] Failed to find MPU6050 chip");
@@ -22,7 +22,7 @@ sensor_status_t mpuInit(){
   return mpu_status;
 }
 
-sensor_status_t mpuReadData(uint8_t* buffer, int& offset){
+sensor_status_t mpuReadData(uint8_t *buffer, int &offset) {
   sensors_event_t a, g, temp;
   if (!mpu.getEvent(&a, &g, &temp)) {
     buffer[offset++] = TM_SENSOR_STATUS_ERR;

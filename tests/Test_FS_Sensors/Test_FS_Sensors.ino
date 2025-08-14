@@ -2,8 +2,8 @@
   PWNSAT Project 2025
 */
 
-#include <Adafruit_MPU6050.h>
 #include <Adafruit_BME280.h>
+#include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 
@@ -19,7 +19,7 @@
 Adafruit_MPU6050 mpu;
 Adafruit_BME280 bme;
 
-static int initMPU(){
+static int initMPU() {
   Serial.println("[MPU] MPU6050 Init");
   if (!mpu.begin(0x69)) {
     Serial.println("[MPU] Failed to find MPU6050 chip");
@@ -35,7 +35,7 @@ static int initMPU(){
   return 0;
 }
 
-static void readMPU(){
+static void readMPU() {
   /* Get new sensor events with the readings */
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
@@ -63,11 +63,11 @@ static void readMPU(){
   Serial.println("");
 }
 
-static int initBME(){
+static int initBME() {
   Serial.println("BME280 Init");
-  if(!bme.begin(0x76)){
+  if (!bme.begin(0x76)) {
     Serial.println("[MPU] Failed to find BME280 chip");
-    Serial.print("[MPU] SensorID was: 0x"); 
+    Serial.print("[MPU] SensorID was: 0x");
     Serial.println(bme.sensorID(), 16);
     return -1;
   }
@@ -75,7 +75,7 @@ static int initBME(){
   return 0;
 }
 
-static void readBME(){
+static void readBME() {
   Serial.print("Temperature = ");
   Serial.print(bme.readTemperature());
   Serial.println(" °C");
@@ -95,19 +95,19 @@ static void readBME(){
   Serial.println("");
 }
 
-static void initLED(){
+static void initLED() {
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW);
 }
 
-static void bootLED(){
-  for(int i = 0; i < 6; i++){
+static void bootLED() {
+  for (int i = 0; i < 6; i++) {
     digitalWrite(LED_PIN, !digitalRead(LED_PIN));
     delay(500);
   }
 }
 
-static void blinkLED(){
+static void blinkLED() {
   digitalWrite(LED_PIN, !digitalRead(LED_PIN));
   delay(500);
   digitalWrite(LED_PIN, !digitalRead(LED_PIN));
@@ -120,13 +120,13 @@ void setup(void) {
     delay(10);
 
   Serial.println("Sensor Test - " FIRMWARE_VERSION);
-  
+
   initLED();
   bootLED();
-  
+
   initMPU();
   initBME();
-  
+
   delay(100);
 }
 
@@ -134,7 +134,7 @@ void loop() {
   Serial.println("==========MPU==========");
   readMPU();
   blinkLED();
-  
+
   Serial.println("==========BME==========");
   readBME();
   blinkLED();

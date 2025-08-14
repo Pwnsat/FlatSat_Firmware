@@ -12,20 +12,15 @@ typedef union {
   unsigned char bytes[4];
 } proto_float_t;
 
-typedef enum {
-  SENSOR_FAIL = -1,
-  SENSOR_OK = 0
-} sensor_status_t;
-
+typedef enum { SENSOR_FAIL = -1, SENSOR_OK = 0 } sensor_status_t;
 
 enum {
   TM_SENSOR_STATUS_OK = 0x00,
   TM_SENSOR_STATUS_ERR = 0x01,
 };
 
-void serialPrintUint8Hex(uint8_t* packet, uint16_t packet_length);
-void printHexDump(const uint8_t* data, size_t len);
-void printStringHexDump(const String& input);
-void floatToBigEndian(float value, uint8_t* bytes);
+void serialPrintUint8Hex(uint8_t *packet, uint16_t packet_length);
+void printHexDump(const uint8_t *data, size_t len);
+void printStringHexDump(const String &input);
+void floatToBigEndian(float value, uint8_t *bytes);
 #endif
-
