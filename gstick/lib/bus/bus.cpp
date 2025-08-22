@@ -1,7 +1,7 @@
+#include <bus.h>
 #include <leds.h>
 #include <proto.h>
 #include <spp.h>
-#include <telemetry.h>
 
 #define BINARY_START_BYTE 0x7E
 

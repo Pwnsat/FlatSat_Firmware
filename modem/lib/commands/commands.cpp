@@ -92,43 +92,24 @@ static void commandSendTelemetry(void) {
                       offset);
   radioTransmit((uint8_t *)&packet,
                 (SPP_PRIMARY_HEADER_LEN + packet.header.length));
+  radioTransmitToModem((uint8_t *)&packet,
+                       (SPP_PRIMARY_HEADER_LEN + packet.header.length));
   Serial.println("[SYS - CMD] Response: APID_TM_SEND_TM");
 }
 
 static void missionHandleData(space_packet_t *space_packet) {
+  Serial.println("Packet");
   int apid = space_packet->header.identification & 0x7FF;
-  if (apid == APID_TC_PING_SYNC) {
-    Serial.println("[SYS - MISSION] Recv Ping Packet");
-    spp_print_packet_details(space_packet);
-    delay(5000);
-    commandSendPingAck();
-  } else if (apid == APID_TC_GET_STATUS) {
-    Serial.println("[SYS - MISSION] Recv Get Status Packet");
-    spp_print_packet_details(space_packet);
-    delay(5000);
-    commandSendStatus();
-  } else if (apid == APID_TC_GET_TEMP) {
-    Serial.println("[SYS - MISSION] Recv Get Temp Packet");
-    spp_print_packet_details(space_packet);
-    delay(5000);
-    commandSendTemp();
-  } else if (apid == APID_TC_GET_GYRO) {
-    Serial.println("[SYS - MISSION] Recv Get Gyro Packet");
-    spp_print_packet_details(space_packet);
-    delay(5000);
-    commandSendGyro();
-  } else if (apid == APID_TC_GET_TM) {
-    Serial.println("[SYS - MISSION] Recv Get Telemetry Packet");
-    spp_print_packet_details(space_packet);
-    delay(5000);
-    commandSendTelemetry();
-  } else if (apid == APID_TC_SET_ROOT) {
-    Serial.println("Root found");
-  } else if (apid == APID_TC_FIRMWARE_UPDATE) {
-    Serial.println("[SYS - MISSION] Retransmittion to Modem");
-    radioTransmitToModem(
-        (uint8_t *)space_packet,
-        (SPP_PRIMARY_HEADER_LEN + space_packet->header.length));
+  if (apid == APID_TC_FIRMWARE_UPDATE) {
+    Serial.print("S@");
+    uint16_t seq_flags = (space_packet->header.sequence >> 14) & 0x3;
+    Serial.write(seq_flags);
+    Serial.write(space_packet->data, space_packet->header.length);
+    Serial.println("E@");
+  } else {
+    Serial.print("T@");
+    Serial.write(space_packet->data, space_packet->header.length);
+    Serial.println("E@");
   }
 }
 

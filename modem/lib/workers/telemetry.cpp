@@ -38,8 +38,6 @@ static void telemetryGetData(void) {
   }
   radioTransmit((uint8_t *)&space_packet,
                 (SPP_PRIMARY_HEADER_LEN + space_packet.header.length));
-  radioTransmitToModem((uint8_t *)&space_packet,
-                       (SPP_PRIMARY_HEADER_LEN + space_packet.header.length));
 }
 
 void telemetryConfigureSensors(void) {

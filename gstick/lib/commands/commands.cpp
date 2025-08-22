@@ -14,7 +14,13 @@ static const uint8_t ping_ack[CMD_PING_ACK_LEN] = {GROUND_STICK_ID, 0x41, 0x43,
 SerialCommand SCmd;
 
 static void processBinary(uint8_t *data, uint8_t len) {
-  radioTransmit(data, len);
+  uint8_t offset = 0;
+  uint8_t segment = data[offset++];
+  space_packet_t packet;
+  spp_tc_build_packet(&packet, segment, SPP_SECHEAD_FLAG_NOPRESENT, 0,
+                      APID_TC_FIRMWARE_UPDATE, data + offset, len - offset);
+  radioTransmit((uint8_t *)&packet,
+                (SPP_PRIMARY_HEADER_LEN + packet.header.length));
 }
 
 static void handleBinary() {
@@ -33,8 +39,7 @@ static void handleBinary() {
 void commandHandler(void) {
   if (Serial.available()) {
     uint8_t b = Serial.peek();
-
-    if (b == BINARY_START_BYTE) {
+    if (b == BINARY_START_BYTE || b == 49) {
       handleBinary();
     } else {
       SCmd.readSerial();
@@ -122,10 +127,13 @@ static void commandSendGetTelemetry(void) {
   ledsBlink(3, 500);
 }
 
+static void serialDefaultHandler(const char *arg) { Serial.println("Unknown"); }
+
 void commandInit(void) {
   SCmd.addCommand(CMD_PING, commandSendPingSync);
   SCmd.addCommand(CMD_STATUS, commandSendGetStatus);
   SCmd.addCommand(CMD_GETTEMP, commandSendGetTemp);
   SCmd.addCommand(CMD_GETGYRO, commandSendGetGyro);
   SCmd.addCommand(CMD_GETTM, commandSendGetTelemetry);
+  SCmd.setDefaultHandler(serialDefaultHandler);
 }

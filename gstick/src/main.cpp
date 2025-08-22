@@ -1,8 +1,8 @@
 #include <Arduino.h>
+#include <bus.h>
 #include <commands.h>
 #include <leds.h>
 #include <radio_wrapper.h>
-#include <telemetry.h>
 
 void setup() {
   Serial.begin(115200);

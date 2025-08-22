@@ -82,7 +82,7 @@ void radioConfigure() {
     uplink_cfg.active = false;
   }
   if (uplink_cfg.active) {
-    uplink.setFrequency(916);
+    uplink.setFrequency(920);
     uplink.setBandwidth(250);
     uplink.setSpreadingFactor(12);
     uplink.setPreambleLength(8);
@@ -104,7 +104,8 @@ void radioConfigure() {
     downlink_cfg.active = false;
   }
   if (downlink_cfg.active) {
-    downlink.setFrequency(918);
+    Serial.println("Configuring downlink");
+    downlink.setFrequency(920);
     downlink.setBandwidth(250);
     downlink.setSpreadingFactor(12);
     downlink.setPreambleLength(8);
