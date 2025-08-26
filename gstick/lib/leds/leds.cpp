@@ -1,5 +1,4 @@
 #include <leds.h>
-
 #define LED1 (27)
 #define LED2 (26)
 #define LED3 (28)

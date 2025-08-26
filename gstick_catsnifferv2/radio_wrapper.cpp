@@ -1,17 +1,6 @@
-#include <leds.h>
-#include <proto.h>
-#include <radio_wrapper.h>
-
-#define CTF1 8
-#define CTF2 9
-#define CTF3 10
-#define RXEN 21
-#define TXEN 20
-#define RADIO_NSS 17
-#define RADIO_DIO1 5
-#define RADIO_NRST 24
-#define RADIO_BUSY 4
-
+#include "radio_wrapper.h"
+#include "leds.h"
+#include "proto.h"
 typedef struct {
   float frequency;
   float bandwidth;
@@ -20,7 +9,18 @@ typedef struct {
   uint8_t codingRate;
 } radio_config_t;
 
-SX1262 radio = new Module(RADIO_NSS, RADIO_DIO1, RADIO_NRST, RADIO_BUSY);
+#define CTF1 14
+#define CTF2 11
+#define CTF3 10
+#define RXEN 16
+#define TXEN 15
+
+#define RADIO_NSS 17
+#define RADIO_DIO1 3
+#define RADIO_NRST 8
+#define RADIO_BUSY 2
+
+SX1262 radio = new Module(17, 3, 8, 2);
 
 static radio_config_t radio_cfg;
 static radioPacketReceivedCb radi_recv_cb = NULL;
@@ -62,7 +62,7 @@ void radioConfigure() {
     Serial.println(state);
   }
   radio.setDio1Action(radio_received_flag);
-  radio.setRfSwitchPins(RXEN, TXEN);
+  radio.setRfSwitchPins(16, 15);
   radio.startReceive();
 }
 
