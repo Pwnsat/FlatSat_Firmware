@@ -1,6 +1,5 @@
 #ifndef __COMMANDS_LISTS_H
 #define __COMMANDS_LISTS_H
-#include <commands_list.h>
 
 #define CMD_PING_SYNC_LEN 6
 #define CMD_PING_ACK_LEN 5
@@ -11,6 +10,8 @@
 #define CMD_GETTEMP "get_temp"
 #define CMD_GETGYRO "get_gyro"
 #define CMD_GETTM "get_tm"
+
+#define CMD_SEND_IMAGE "send_image"
 
 #define CMD_RES_PING 0x22
 #define CMD_RES_STATUS 0x21

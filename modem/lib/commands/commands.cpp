@@ -98,7 +98,6 @@ static void commandSendTelemetry(void) {
 }
 
 static void missionHandleData(space_packet_t *space_packet) {
-  Serial.println("Packet");
   int apid = space_packet->header.identification & 0x7FF;
   if (apid == APID_TC_FIRMWARE_UPDATE) {
     Serial.print("S@");
@@ -106,8 +105,12 @@ static void missionHandleData(space_packet_t *space_packet) {
     Serial.write(seq_flags);
     Serial.write(space_packet->data, space_packet->header.length);
     Serial.println("E@");
-  } else {
+  } else if (apid == APID_TM_SEND_TM || apid == APID_TM_SENSORS) {
     Serial.print("T@");
+    Serial.write(space_packet->data, space_packet->header.length);
+    Serial.println("E@");
+  } else if (apid == APID_TM_IMAGE) {
+    Serial.print("I@");
     Serial.write(space_packet->data, space_packet->header.length);
     Serial.println("E@");
   }

@@ -11,8 +11,9 @@ void setup() {
   while (!Serial)
     ;
 
+  Serial.flush();
   radioConfigure();
-  telemetryConfigureSensors();
+  // telemetryConfigureSensors();
   radioRegisterCb(commandHandler);
 }
 

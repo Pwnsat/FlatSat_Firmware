@@ -151,7 +151,7 @@ void radioTransmitToModem(uint8_t *buffer, uint16_t buffer_len) {
   if (!uplink_cfg.active) {
     return;
   }
-  uplink.setFrequency(920);
+  uplink.setFrequency(925);
   delay(500);
   int state = uplink.transmit(buffer, buffer_len);
   if (state == RADIOLIB_ERR_NONE) {

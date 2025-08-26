@@ -11,7 +11,7 @@ typedef struct {
   unsigned long previous;
 } timeout_worker_t;
 
-static timeout_worker_t t_tm_data = {.inverval = 10000, .previous = 0};
+static timeout_worker_t t_tm_data = {.inverval = 2000, .previous = 0};
 
 static timeout_worker_t t_tc_idle = {.inverval = 5000, .previous = 0};
 
@@ -38,8 +38,10 @@ static void telemetryGetData(void) {
   }
   radioTransmit((uint8_t *)&space_packet,
                 (SPP_PRIMARY_HEADER_LEN + space_packet.header.length));
-  radioTransmitToModem((uint8_t *)&space_packet,
-                       (SPP_PRIMARY_HEADER_LEN + space_packet.header.length));
+
+  // radioTransmitToModem((uint8_t*)&space_packet,
+  //                      (SPP_PRIMARY_HEADER_LEN +
+  //                      space_packet.header.length));
 }
 
 void telemetryConfigureSensors(void) {
