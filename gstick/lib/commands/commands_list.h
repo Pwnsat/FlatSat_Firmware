@@ -12,11 +12,13 @@
 #define CMD_GETTEMP "get_temp"
 #define CMD_GETGYRO "get_gyro"
 #define CMD_GETTM "get_tm"
+#define CMD_SEND_MSG "send"
 
 #define CMD_RES_PING 0x22
 #define CMD_RES_STATUS 0x21
 #define CMD_RES_GETTEMP 0x24
 #define CMD_RES_GETGYRO 0x25
 #define CMD_RES_GETTM 0x23
+#define CMD_RES_MSG 0x29
 
 #endif
