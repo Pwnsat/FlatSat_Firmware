@@ -15,34 +15,6 @@ typedef struct {
 
 static packet_counter_t packet_counter = {.tc = 0, .tm = 0};
 
-void spp_print_packet_details(space_packet_t *packet) {
-  uint16_t version = (packet->header.identification >> 13) & 0x7;
-  uint16_t type = (packet->header.identification >> 11) & 0x1;
-  uint16_t sec_header = (packet->header.identification >> 10) & 0x1;
-  uint16_t apid = packet->header.identification & 0x7FF;
-
-  uint16_t seq_flags = (packet->header.sequence >> 14) & 0x3;
-  uint16_t seq_count = packet->header.sequence & 0x3FFF;
-
-  Serial.println("=== Space Packet Header ===");
-  Serial.print(" Version:             %u\n", version);
-  Serial.print(" Type:                %s %02X\n",
-               type == SPP_PTYPE_TC ? "Telecommand" : "Telemetry", type);
-  Serial.print(" Secondary Header:    %u\n", sec_header);
-  Serial.print(" APID:                0x%04X\n", apid);
-  Serial.print(" Sequence Flags:      0x%X (%s)\n", seq_flags,
-               seq_flags == SPP_GROUP_FLAG_UNSEGMENTED ? "Unsegmented"
-               : seq_flags == SPP_GROUP_FLAG_START     ? "Start"
-               : seq_flags == SPP_GROUP_FLAG_CONT      ? "Continuation"
-                                                       : "End");
-
-  Serial.print(" Sequence Count:      %u\n", seq_count);
-  Serial.print(" Data Length:         %u\n", packet->header.length);
-
-  Serial.println("=== Payload Dump (Hex) ===");
-  serialPrintUint8Hex(packet->data, packet->header.length);
-}
-
 static void spp_validate_counters() {
   if (packet_counter.tc == 16383) {
     packet_counter.tc = 0;
