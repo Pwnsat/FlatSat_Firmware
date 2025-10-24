@@ -8,9 +8,7 @@
 
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_RGB + NEO_KHZ800);
 
-void setup() {
-  pixels.begin();
-}
+void setup() { pixels.begin(); }
 
 void loop() {
   pixels.clear();
