@@ -15,7 +15,7 @@ sensor_status_t bmeInit() {
     bme_status = SENSOR_FAIL;
     return bme_status;
   }
-  Serial.println("[MPU] MPU6050 Found!");
+  Serial.println("[SYS - BME] BME280 Found!");
   bme_status = SENSOR_OK;
   return bme_status;
 }

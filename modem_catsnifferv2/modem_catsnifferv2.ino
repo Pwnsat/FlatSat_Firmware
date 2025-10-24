@@ -1,7 +1,6 @@
 #include "commands.h"
 #include "mission.h"
 #include "radio_wrapper.h"
-#include "workers.h"
 
 // Dont work
 

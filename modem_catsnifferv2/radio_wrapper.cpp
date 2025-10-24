@@ -112,6 +112,9 @@ void radioCheckPacketReceived(void) {
         Serial.print("[SYS - Radio] SNR: ");
         Serial.println(radio.getSNR());
       }
+    } else if (state == RADIOLIB_ERR_CRC_MISMATCH) {
+      Serial.println("[SYS - Radio] Recv CRC ERROR");
+      radi_recv_cb(byteArr, recvLen);
     } else {
       Serial.print("[SYS - Radio] Recv Error: ");
       Serial.println(state);

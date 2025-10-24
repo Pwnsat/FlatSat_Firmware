@@ -151,6 +151,6 @@ void commandInit(void) {
   SCmd.addCommand(CMD_GETTEMP, commandSendGetTemp);
   SCmd.addCommand(CMD_GETGYRO, commandSendGetGyro);
   SCmd.addCommand(CMD_GETTM, commandSendGetTelemetry);
-  SCmd.addCommand(CMD_SEND_MSG, commandSendGetTelemetry);
+  SCmd.addCommand(CMD_SEND_MSG, commandSendMessage);
   SCmd.setDefaultHandler(serialDefaultHandler);
 }

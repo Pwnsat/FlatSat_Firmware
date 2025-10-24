@@ -1,7 +1,5 @@
 #include "commands.h"
-#include "bme_wrapper.h"
 #include "mission.h"
-#include "mpu_wrapper.h"
 #include "proto.h"
 #include "radio_wrapper.h"
 #include "spp.h"
@@ -46,56 +44,6 @@ static void commandSendStatus(void) {
                 (SPP_PRIMARY_HEADER_LEN + packet.header.length));
   Serial.println("[SYS - CMD] Response: APID_TM_SEND_STATUS");
 }
-/** @brief APID_TM_SEND_TEMP */
-static void commandSendTemp(void) {
-  space_packet_t packet;
-  uint8_t buffer[MAX_PAYLOAD_CHUNK];
-  int offset = 0;
-  buffer[offset++] = SPACECRAFT_ID;
-  bmeReadData(buffer, offset);
-  buffer[offset++] = 0x00;
-  spp_tc_build_packet(&packet, SPP_GROUP_FLAG_UNSEGMENTED,
-                      SPP_SECHEAD_FLAG_NOPRESENT, 0, APID_TM_SEND_TEMP, buffer,
-                      offset);
-  radioTransmit((uint8_t *)&packet,
-                (SPP_PRIMARY_HEADER_LEN + packet.header.length));
-  Serial.println("[SYS - CMD] Response: APID_TM_SEND_TEMP");
-}
-
-/** @brief APID_TM_SEND_GYRO */
-static void commandSendGyro(void) {
-  space_packet_t packet;
-  uint8_t buffer[MAX_PAYLOAD_CHUNK];
-  int offset = 0;
-  buffer[offset++] = SPACECRAFT_ID;
-  mpuReadData(buffer, offset);
-  buffer[offset++] = 0x00;
-  spp_tc_build_packet(&packet, SPP_GROUP_FLAG_UNSEGMENTED,
-                      SPP_SECHEAD_FLAG_NOPRESENT, 0, APID_TM_SEND_GYRO, buffer,
-                      offset);
-  radioTransmit((uint8_t *)&packet,
-                (SPP_PRIMARY_HEADER_LEN + packet.header.length));
-  Serial.println("[SYS - CMD] Response: APID_TM_SEND_GYRO");
-}
-
-/** @brief APID_TM_SEND_TM */
-static void commandSendTelemetry(void) {
-  space_packet_t packet;
-  uint8_t buffer[MAX_PAYLOAD_CHUNK];
-  int offset = 0;
-  buffer[offset++] = SPACECRAFT_ID;
-  bmeReadData(buffer, offset);
-  mpuReadData(buffer, offset);
-  buffer[offset++] = 0x00;
-  spp_tc_build_packet(&packet, SPP_GROUP_FLAG_UNSEGMENTED,
-                      SPP_SECHEAD_FLAG_NOPRESENT, 0, APID_TM_SEND_TM, buffer,
-                      offset);
-  radioTransmit((uint8_t *)&packet,
-                (SPP_PRIMARY_HEADER_LEN + packet.header.length));
-  radioTransmitToModem((uint8_t *)&packet,
-                       (SPP_PRIMARY_HEADER_LEN + packet.header.length));
-  Serial.println("[SYS - CMD] Response: APID_TM_SEND_TM");
-}
 
 static void missionHandleData(space_packet_t *space_packet) {
   int apid = space_packet->header.identification & 0x7FF;
@@ -111,6 +59,10 @@ static void missionHandleData(space_packet_t *space_packet) {
     Serial.println("E@");
   } else if (apid == APID_TM_IMAGE) {
     Serial.print("I@");
+    Serial.write(space_packet->data, space_packet->header.length);
+    Serial.println("E@");
+  } else if (apid == APID_TC_BROADCAST) {
+    Serial.print("B@");
     Serial.write(space_packet->data, space_packet->header.length);
     Serial.println("E@");
   }

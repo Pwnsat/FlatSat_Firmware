@@ -12,6 +12,7 @@
 #define CMD_GETTM "get_tm"
 
 #define CMD_SEND_IMAGE "send_image"
+#define CMD_SEND "send"
 
 #define CMD_RES_PING 0x22
 #define CMD_RES_STATUS 0x21

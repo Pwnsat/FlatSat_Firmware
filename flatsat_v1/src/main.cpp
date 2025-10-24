@@ -9,8 +9,6 @@
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial)
-    delay(10);
 
   Serial.flush();
   commandUARTInit();
@@ -23,5 +21,5 @@ void loop() {
   commandUARTHandler();
   radioCheckPacketReceived();
   telemetryWorker();
-  // telemetryIdleWorker();
+  telemetryIdleWorker();
 }

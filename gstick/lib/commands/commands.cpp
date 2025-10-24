@@ -132,12 +132,12 @@ static void commandSendMessage(void) {
   if (arg != NULL) {
     space_packet_t packet;
     spp_tc_build_packet(&packet, SPP_GROUP_FLAG_UNSEGMENTED,
-                        SPP_SECHEAD_FLAG_NOPRESENT, 0, APID_TC_GET_TM,
-                        (const uint8_t *)arg, strlen(arg));
+                        SPP_SECHEAD_FLAG_NOPRESENT, 0, APID_TC_BROADCAST,
+                        (uint8_t *)arg, strlen(arg));
     radioTransmit((uint8_t *)&packet,
                   (SPP_PRIMARY_HEADER_LEN + packet.header.length));
     Serial.write(BINARY_START_BYTE);
-    Serial.write(CMD_RES_GETTM);
+    Serial.write(CMD_RES_MSG);
     Serial.println("");
     ledsBlink(3, 500);
   }
@@ -151,6 +151,6 @@ void commandInit(void) {
   SCmd.addCommand(CMD_GETTEMP, commandSendGetTemp);
   SCmd.addCommand(CMD_GETGYRO, commandSendGetGyro);
   SCmd.addCommand(CMD_GETTM, commandSendGetTelemetry);
-  SCmd.addCommand(CMD_SEND_MSG, commandSendGetTelemetry);
+  SCmd.addCommand(CMD_SEND_MSG, commandSendMessage);
   SCmd.setDefaultHandler(serialDefaultHandler);
 }

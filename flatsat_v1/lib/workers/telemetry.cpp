@@ -11,9 +11,9 @@ typedef struct {
   unsigned long previous;
 } timeout_worker_t;
 
-static timeout_worker_t t_tm_data = {.inverval = 2000, .previous = 0};
+static timeout_worker_t t_tm_data = {.inverval = 10000, .previous = 0};
 
-static timeout_worker_t t_tc_idle = {.inverval = 5000, .previous = 0};
+static timeout_worker_t t_tc_idle = {.inverval = 15000, .previous = 0};
 
 static timeout_worker_t t_tc_ping = {.inverval = 30000, .previous = 0};
 
@@ -28,7 +28,7 @@ static void telemetryGetData(void) {
 
   space_packet_t space_packet;
   int ret = spp_tm_build_packet(&space_packet, SPP_GROUP_FLAG_UNSEGMENTED,
-                                SPP_SECHEAD_FLAG_NOPRESENT, 0, APID_TM_SENSORS,
+                                SPP_SECHEAD_FLAG_NOPRESENT, 0, APID_TM_SEND_TM,
                                 buffer, offset);
 
   if (ret != SPP_ERROR_NONE) {
@@ -39,9 +39,8 @@ static void telemetryGetData(void) {
   radioTransmit((uint8_t *)&space_packet,
                 (SPP_PRIMARY_HEADER_LEN + space_packet.header.length));
 
-  // radioTransmitToModem((uint8_t*)&space_packet,
-  //                      (SPP_PRIMARY_HEADER_LEN +
-  //                      space_packet.header.length));
+  radioTransmitToModem((uint8_t *)&space_packet,
+                       (SPP_PRIMARY_HEADER_LEN + space_packet.header.length));
 }
 
 void telemetryConfigureSensors(void) {

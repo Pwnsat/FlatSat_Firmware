@@ -9,7 +9,7 @@
 #define __APID_H
 
 /* APID sended from spacecraft */
-#define APID_TM_SENSORS 100
+#define APID_TM_SENSORS 103
 #define APID_TM_BME 101
 #define APID_TM_MPU 102
 // This is the spacecraft sender ack ping
@@ -28,6 +28,7 @@
 // APID TC Recv file
 #define APID_TC_FIRMWARE_UPDATE 66
 #define APID_TM_IMAGE 10
+#define APID_TC_BROADCAST 100
 // APID FOR ROOT stuff
 #define APID_TC_SET_ROOT 900
 

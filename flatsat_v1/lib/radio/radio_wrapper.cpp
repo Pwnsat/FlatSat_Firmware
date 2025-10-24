@@ -154,11 +154,7 @@ void radioTransmitToModem(uint8_t *buffer, uint16_t buffer_len) {
   uplink.setFrequency(925);
   delay(500);
   int state = uplink.transmit(buffer, buffer_len);
-  if (state == RADIOLIB_ERR_NONE) {
-    Serial.print("[SYS - Radio] Transmited: ");
-    Serial.write(buffer, buffer_len);
-    Serial.println();
-  } else {
+  if (state != RADIOLIB_ERR_NONE) {
     Serial.print("[SYS - Radio] Transmit Error: ");
     Serial.println(state);
   }
@@ -171,11 +167,7 @@ void radioTransmit(uint8_t *buffer, uint16_t buffer_len) {
     return;
   }
   int state = uplink.transmit(buffer, buffer_len);
-  if (state == RADIOLIB_ERR_NONE) {
-    Serial.print("[SYS - Radio] Transmited: ");
-    Serial.write(buffer, buffer_len);
-    Serial.println();
-  } else {
+  if (state != RADIOLIB_ERR_NONE) {
     Serial.print("[SYS - Radio] Transmit Error: ");
     Serial.println(state);
   }

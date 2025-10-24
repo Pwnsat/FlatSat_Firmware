@@ -15,7 +15,7 @@ unsigned long lastTime = 0;
 
 sensor_status_t mpuInit() {
   Serial.println("[SYS - MPU] MPU6050 Init");
-  if (!mpu.begin(0x69)) {
+  if (!mpu.begin(0x69) || !mpu.begin(0x68)) {
     Serial.println("[SYS - MPU] Failed to find MPU6050 chip");
     mpu_status = SENSOR_FAIL;
     return mpu_status;
