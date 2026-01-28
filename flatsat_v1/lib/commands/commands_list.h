@@ -2,7 +2,7 @@
 #define __COMMANDS_LISTS_H
 
 #define CMD_PING_SYNC_LEN 6
-#define CMD_PING_ACK_LEN 5
+#define CMD_PING_ACK_LEN 8
 #define GROUND_STICK_ID 0x7C
 
 #define CMD_PING "send_ping"

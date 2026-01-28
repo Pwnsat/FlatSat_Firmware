@@ -2,6 +2,13 @@
 
 Firmware for the FlatSat v0.1
 
+# Flatsat V1
+This firmware is just a workshop version for testing. The final firmware will release in the next days.
+With this firmware you can test:
+- Packet interception
+- Packet injection
+
+
 # Test
 
 With arduino upload with the `Default with spiffs` partition scheme

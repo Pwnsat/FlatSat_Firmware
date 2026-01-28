@@ -10,8 +10,8 @@
 
 static const uint8_t ping_sync[CMD_PING_SYNC_LEN] = {SPACECRAFT_ID, 0x53, 0x59,
                                                      0x4e,          0x43, 0x00};
-static const uint8_t ping_ack[CMD_PING_ACK_LEN] = {SPACECRAFT_ID, 0x41, 0x43,
-                                                   0x4b, 0x00};
+static const uint8_t ping_ack[CMD_PING_ACK_LEN] = {
+    SPACECRAFT_ID, 0x50, 0x77, 0x6e, 0x73, 0x61, 0x74, 0x00};
 
 /* COMMANDS FUNCTIONS */
 /** @brief APID_TC_PING_SYNC */
@@ -37,11 +37,11 @@ static void commandSendPingAck(void) {
 /** @brief APID_TM_SEND_STATUS */
 static void commandSendStatus(void) {
   space_packet_t packet;
-  const uint8_t buffer[11] = {SPACECRAFT_ID, 0x50, 0x75, 0x72, 0x61, 0x20,
-                              0x56,          0x69, 0x64, 0x61, 0x00};
+  const uint8_t buffer[9] = {SPACECRAFT_ID, 0x50, 0x77, 0x6e,
+                             0x73,          0x61, 0x74, 0x00};
   spp_tc_build_packet(&packet, SPP_GROUP_FLAG_UNSEGMENTED,
                       SPP_SECHEAD_FLAG_NOPRESENT, 0, APID_TM_SEND_STATUS,
-                      buffer, 11);
+                      buffer, 9);
   radioTransmit((uint8_t *)&packet,
                 (SPP_PRIMARY_HEADER_LEN + packet.header.length));
   Serial.println("[SYS - CMD] Response: APID_TM_SEND_STATUS");
