@@ -12,7 +12,13 @@
 #include <RadioLib.h>
 #include <SPI.h>
 
-SX1262 radio0 = new Module(5, 8, 11, 14, SPI);
+static SPIClassRP2040 spiRadio0(spi0,
+    PIN_SPI_RADIO1_CIPO,
+    PIN_RADIO1_NSS,
+    PIN_SPI_RADIO1_SCK,
+    PIN_SPI_RADIO1_COPI);
+SX1262 radio0 = new Module(PIN_RADIO1_NSS, PIN_RADIO1_DIO1, PIN_RADIO1_RST,
+                            PIN_RADIO1_BSY, spiRadio0);
 
 static radioPacketReceivedCb radi_recv_cb = NULL;
 
@@ -35,10 +41,7 @@ void downlinkRadioRegisterCb(radioPacketReceivedCb recv_cb) {
 }
 
 void downlinkRadioConfigure(void) {
-  SPI.setSCK(PIN_SPI_RADIO1_SCK);
-  SPI.setTX(PIN_SPI_RADIO1_COPI);
-  SPI.setRX(PIN_SPI_RADIO1_CIPO);
-  SPI.begin();
+  spiRadio0.begin();
 
   int state = radio0.begin();
   if (state != RADIOLIB_ERR_NONE) {
