@@ -10,7 +10,7 @@
 #include <Arduino.h>
 
 #define colorSaturation 60
-#define pixelCount (1)
+#define LED_PIXEL_COUNT (1)
 
 typedef enum {
   LED_COLOR_RED,

@@ -9,7 +9,7 @@
 #include "pins.h"
 #include <NeoPixelBus.h>
 
-NeoPixelBus<NeoGrbFeature, NeoWs2812xMethod> strip(pixelCount, PIN_RGB_LED);
+NeoPixelBus<NeoGrbFeature, NeoWs2812xMethod> strip(LED_PIXEL_COUNT, PIN_RGB_LED);
 
 RgbColor ledColor_red(colorSaturation, 0, 0);
 RgbColor ledColor_green(0, colorSaturation, 0);
