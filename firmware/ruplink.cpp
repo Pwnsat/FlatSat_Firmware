@@ -42,8 +42,7 @@ void uplinkRadioConfigure(void) {
   radio1.setSpreadingFactor(UPLINK_SF);
   radio1.setCodingRate(UPLINK_CR);
   radio1.setOutputPower(22);
-  radio1.setRfSwitchPins(24, 28);
-  // radio1.setRfSwitchPins(28, 24);
+  radio1.setRfSwitchPins(RADIOLIB_NC, PIN_RADIO0_ANT_SW);
   log_line("INFO", "Radio 1 Configured Successfully!");
 }
 

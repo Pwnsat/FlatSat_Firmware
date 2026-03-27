@@ -57,8 +57,7 @@ void downlinkRadioConfigure(void) {
   radio0.setBandwidth(DOWNLINK_BW);
   radio0.setSpreadingFactor(DOWNLINK_SF);
   radio0.setCodingRate(DOWNLINK_CR);
-  radio0.setRfSwitchPins(9, 29);
-  // radio0.setRfSwitchPins(28, 24);
+  radio0.setRfSwitchPins(RADIOLIB_NC, PIN_RADIO1_ANT_SW);
   radio0.setPacketReceivedAction(radio_received_flag);
   radio0.explicitHeader();
   radio0.setCRC(0);
