@@ -12,17 +12,20 @@
 #include <RadioLib.h>
 #include <SPI.h>
 
-SX1262 radio1 = new Module(17, 3, 27, 26, SPI1);
+static SPIClassRP2040 spiRadio1(spi0,
+    PIN_SPI_RADIO0_CIPO,
+    PIN_RADIO0_NSS,
+    PIN_SPI_RADIO0_SCK,
+    PIN_SPI_RADIO0_COPI);
+SX1262 radio1 = new Module(PIN_RADIO0_NSS, PIN_RADIO0_DIO1, PIN_RADIO0_RST,
+                            PIN_RADIO0_BSY, spiRadio1);
 
 static void log_line(const char *type, const char *msg) {
   Serial.printf("[%s] %s\n", type, msg);
 }
 
 void uplinkRadioConfigure(void) {
-  SPI.setSCK(PIN_SPI_RADIO0_SCK);
-  SPI.setTX(PIN_SPI_RADIO0_COPI);
-  SPI.setRX(PIN_SPI_RADIO0_CIPO);
-  SPI.begin();
+  spiRadio1.begin();
 
   int state = radio1.begin();
   if (state != RADIOLIB_ERR_NONE) {
