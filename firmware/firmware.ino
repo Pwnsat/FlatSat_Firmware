@@ -27,7 +27,7 @@ void setup() {
   sensorsConfigure();
   uplinkRadioConfigure();
   downlinkRadioConfigure();
-  // uplinkRadioRegisterCb(commandHandler);
+  uplinkRadioRegisterCb(commandHandler);
 }
 
 void setup1() { obcConfigureCore1(); }
