@@ -57,6 +57,24 @@ bool downlinkRadioTransmit(uint8_t *buffer, uint16_t buffer_len) {
   return true;
 }
 
+bool downlinkRadioTransmitBroadcast(uint16_t frequency, uint8_t *buffer,
+                                    uint16_t buffer_len) {
+  if (radio1.setFrequency(frequency) != RADIOLIB_ERR_NONE) {
+    ledBlink(8, LED_COLOR_RED);
+    return false;
+  }
+  int state = radio1.transmit(buffer, buffer_len);
+  if (state != RADIOLIB_ERR_NONE) {
+    log_line("ERROR", "Radio 1 Transmition Error!");
+    Serial.printf("Error: %d\n", state);
+    ledBlink(8, LED_COLOR_RED);
+    return false;
+  }
+  ledBlink(8, LED_COLOR_WHITE);
+  radio1.setFrequency(DOWNLINK_FREQ);
+  return true;
+}
+
 void downlinkRadioTransmitNBlock(uint8_t *buffer, uint16_t buffer_len) {
   transmissionState = radio1.startTransmit(buffer, buffer_len);
 }

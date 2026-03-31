@@ -17,5 +17,7 @@
 void downlinkRadioConfigure(void);
 bool downlinkRadioTransmit(uint8_t *buffer, uint16_t buffer_len);
 void downlinkRadioTransmitNBlock(uint8_t *buffer, uint16_t buffer_len);
+bool downlinkRadioTransmitBroadcast(uint16_t frequency, uint8_t *buffer,
+                                    uint16_t buffer_len);
 void downlinkRadioCheckTransmition(void);
 #endif // FIRMWARE_RDOWNLINK_H

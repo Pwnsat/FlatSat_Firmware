@@ -375,15 +375,32 @@ void commandApidHandler(space_packet_t *space_packet) {
     }
   } else if (apid == SPP_APID_TC_SET_BEACON_RATE) {
     uint8_t b_seconds = space_packet->data[0];
-    Serial.printf("Changing beacon rate to: %d\n", b_seconds);
     if (b_seconds > 10) {
       Serial.println("[Error] The Beacon rate it is to high");
       return;
     }
     t_radio_beacon.interval = b_seconds * 1000;
   } else if (apid == SPP_APID_TC_BROADCAST_MSG) {
-    Serial.printf("Sending broadcast message\n");
-    printHexDump(space_packet->data, space_packet->header.length);
+    uint16_t frequency = ((uint16_t)space_packet->data[0] << 8) |
+                         (uint16_t)space_packet->data[1];
+    size_t buffer_len = space_packet->header.length - 1;
+    uint8_t buffer[buffer_len] = {0};
+    memcpy(buffer, space_packet->data + 2, buffer_len);
+    space_packet_t space_packet;
+    const int ret = spp_tm_build_packet(
+        &space_packet, SPP_GROUP_FLAG_UNSEGMENTED, SPP_SECHEAD_FLAG_NOPRESENT,
+        0, SPP_APID_TM_BROADCAST_MSG, buffer, buffer_len);
+    if (ret != SPP_ERROR_NONE) {
+      Serial.print("[ERROR] Telemetry SPP Pack Frame: ");
+      Serial.println(ret);
+      ledBlink(8, LED_COLOR_RED);
+      return;
+    }
+
+    downlinkRadioTransmitBroadcast(
+        frequency, (uint8_t *)&space_packet,
+        (SPP_PRIMARY_HEADER_LEN + space_packet.header.length));
+    logger_spp(&space_packet);
   } else {
     Serial.printf("[ERROR] Unknown APID: 0x%02X \n", apid);
   }
