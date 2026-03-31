@@ -35,10 +35,10 @@ static int spp_build_packet(space_packet_t *space_packet, uint8_t type,
 
   memset(space_packet, 0, sizeof(space_packet_t));
 
-  /* htons -> for better compatibilites to MSB */
-  space_packet->header.identification = (CCSDS_SPP_VERSION << 13) |
-                                        (type << 11) | (sec_header << 10) |
-                                        (apid & 0x7FF);
+  space_packet->header.identification =
+      ((CCSDS_SPP_VERSION << 13) | (type << 11) | (sec_header << 10) |
+       (apid & 0x7FF));
+
   space_packet->header.sequence = (flag << 14) | (sequence_count & 0x3FFF);
 
   if (sec_header == SPP_SECHEAD_FLAG_PRESENT && sec_header_len == 0) {
@@ -93,15 +93,14 @@ int spp_unpack_packet(space_packet_t *space_packet, const uint8_t *buffer,
   }
 
   memset(space_packet, 0, sizeof(space_packet_t));
-  space_packet->header.identification = (buffer[1] << 8) | buffer[0];
+  space_packet->header.identification = ((uint16_t)buffer[0] << 8) | buffer[1];
+  space_packet->header.sequence = ((uint16_t)buffer[2] << 8) | buffer[3];
+  space_packet->header.length = ((uint16_t)buffer[4] << 8) | buffer[5];
 
-  uint8_t version = (space_packet->header.identification << 13) & 0x07;
+  uint8_t version = (space_packet->header.identification >> 13) & 0x07;
   if (version != CCSDS_SPP_VERSION) {
     return SPP_ERROR_VERSION;
   }
-
-  space_packet->header.sequence = (buffer[3] << 8) | buffer[2];
-  space_packet->header.length = (buffer[5] << 8) | buffer[4];
 
   if (space_packet->header.length > SPP_MAX_PAYLOAD_CHUNK) {
     return SPP_ERROR_PAYLOAD_LEN;

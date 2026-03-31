@@ -12,48 +12,156 @@
 #include <RadioLib.h>
 #include <SPI.h>
 
-static SPIClassRP2040 spiRadio1(spi0,
-    PIN_SPI_RADIO0_CIPO,
-    PIN_RADIO0_NSS,
-    PIN_SPI_RADIO0_SCK,
-    PIN_SPI_RADIO0_COPI);
-SX1262 radio1 = new Module(PIN_RADIO0_NSS, PIN_RADIO0_DIO1, PIN_RADIO0_RST,
-                            PIN_RADIO0_BSY, spiRadio1);
+static SPIClassRP2040 spiRadio0(spi0, PIN_SPI_RADIO0_CIPO, PIN_RADIO0_NSS,
+                                PIN_SPI_RADIO0_SCK, PIN_SPI_RADIO0_COPI);
+SX1262 radio0 = new Module(PIN_RADIO0_NSS, PIN_RADIO0_DIO1, PIN_RADIO0_RST,
+                           PIN_RADIO0_BSY, spiRadio0);
+
+static radioPacketReceivedCb radi_recv_cb = NULL;
+
+volatile bool receivedFlag = false;
+volatile bool enableInterruptRadio = true;
 
 static void log_line(const char *type, const char *msg) {
   Serial.printf("[%s] %s\n", type, msg);
 }
 
-void uplinkRadioConfigure(void) {
-  spiRadio1.begin();
+static int hexCharToNibble(char c) {
+  if (c >= '0' && c <= '9')
+    return c - '0';
+  if (c >= 'A' && c <= 'F')
+    return c - 'A' + 10;
+  if (c >= 'a' && c <= 'f')
+    return c - 'a' + 10;
+  return -1;
+}
 
-  int state = radio1.begin();
+static size_t hexStringToBytes(const uint8_t *input, size_t len,
+                               uint8_t *output) {
+  size_t outIndex = 0;
+
+  for (size_t i = 0; i < len;) {
+    if (input[i] == ' ') {
+      i++;
+      continue;
+    }
+
+    if (i + 1 >= len)
+      break;
+
+    int high = hexCharToNibble(input[i]);
+    int low = hexCharToNibble(input[i + 1]);
+
+    if (high < 0 || low < 0)
+      break;
+
+    output[outIndex++] = (high << 4) | low;
+    i += 2;
+  }
+
+  return outIndex;
+}
+
+static void printHexDump(const uint8_t *data, size_t len) {
+  const size_t bytesPerLine = 32;
+  char ascii[bytesPerLine + 1];
+  ascii[bytesPerLine] = '\0';
+
+  for (size_t i = 0; i < len; i++) {
+    if (i % bytesPerLine == 0) {
+      if (i != 0) {
+        Serial.print("  |");
+        Serial.println(ascii);
+      }
+      Serial.printf("%08X  ", (unsigned int)i);
+    }
+
+    Serial.printf("%02X ", data[i]);
+    ascii[i % bytesPerLine] = (data[i] >= 32 && data[i] <= 126) ? data[i] : '.';
+  }
+
+  size_t remaining = len % bytesPerLine;
+  if (remaining > 0) {
+    for (size_t i = remaining; i < bytesPerLine; i++) {
+      Serial.print("   ");
+    }
+  }
+
+  Serial.print("  |");
+  ascii[remaining == 0 ? bytesPerLine : remaining] = '\0';
+  Serial.println(ascii);
+}
+
+static void radio_received_flag(void) {
+  if (!enableInterruptRadio) {
+    return;
+  }
+  receivedFlag = true;
+}
+
+void uplinkRadioRegisterCb(radioPacketReceivedCb recv_cb) {
+  radi_recv_cb = recv_cb;
+}
+
+void uplinkRadioConfigure(void) {
+  spiRadio0.begin();
+
+  int state = radio0.begin();
   if (state != RADIOLIB_ERR_NONE) {
-    log_line("ERROR", "Radio 1 Init Failed");
+    log_line("ERROR", "Radio 0 Init Failed");
     Serial.printf("Error: %d\n", state);
     return;
   }
-  state = radio1.setFrequency(UPLINK_FREQ);
-  if (state != RADIOLIB_ERR_NONE) {
-    log_line("ERROR", "Radio 1 Frequency set error");
-    Serial.printf("Error: %d\n", state);
-  }
-  radio1.setBandwidth(UPLINK_BW);
-  radio1.setSpreadingFactor(UPLINK_SF);
-  radio1.setCodingRate(UPLINK_CR);
-  radio1.setOutputPower(22);
-  radio1.setRfSwitchPins(RADIOLIB_NC, PIN_RADIO0_ANT_SW);
-  log_line("INFO", "Radio 1 Configured Successfully!");
+  radio0.setFrequency(UPLINK_FREQ);
+  radio0.setBandwidth(UPLINK_BW);
+  radio0.setSpreadingFactor(UPLINK_SF);
+  radio0.setCodingRate(UPLINK_CR);
+  radio0.setOutputPower(22);
+  radio0.setRfSwitchPins(RADIOLIB_NC, PIN_RADIO0_ANT_SW);
+  radio0.setPacketReceivedAction(radio_received_flag);
+  radio0.explicitHeader();
+  radio0.setCRC(0);
+  radio0.startReceive();
+  log_line("INFO", "Radio 0 Configured Successfully!");
 }
 
-bool uplinkRadioTransmit(uint8_t *buffer, uint16_t buffer_len) {
-  int state = radio1.transmit(buffer, buffer_len);
-  if (state != RADIOLIB_ERR_NONE) {
-    log_line("ERROR", "Radio 1 Transmition Error!");
-    Serial.printf("Error: %d\n", state);
-    ledBlink(8, LED_COLOR_RED);
-    return false;
+void uplinkRadioCheckPacketReceived(void) {
+  if (receivedFlag) {
+    receivedFlag = false;
+    enableInterruptRadio = false;
+
+    int recvLen = radio0.getPacketLength();
+
+    byte byteArr[recvLen];
+    int state = radio0.readData(byteArr, recvLen);
+    if (state == RADIOLIB_ERR_NONE || state == RADIOLIB_ERR_CRC_MISMATCH) {
+      if (radi_recv_cb != NULL) {
+        uint8_t parsed[recvLen]; // worst case
+        size_t parsedLen = hexStringToBytes(byteArr, recvLen, parsed);
+        printHexDump(parsed, parsedLen);
+        radi_recv_cb(parsed, parsedLen);
+      } else {
+        Serial.print("[INFO] Radio 0 Recv: ");
+        Serial.write(byteArr, recvLen);
+        Serial.println();
+        uint8_t parsed[recvLen]; // worst case
+        size_t parsedLen = hexStringToBytes(byteArr, recvLen, parsed);
+
+        Serial.println("[INFO] Parsed HEX -> RAW:");
+        printHexDump(parsed, parsedLen);
+        printHexDump(byteArr, recvLen);
+        Serial.print("[INFO] Radio 0 RSSI: ");
+        Serial.println(radio0.getRSSI());
+        Serial.print("[INFO] Radio 0 SNR: ");
+        Serial.println(radio0.getSNR());
+      }
+      ledBlink(8, LED_COLOR_BLUE);
+    } else {
+      Serial.print("[SYS - Radio] Recv Error: ");
+      Serial.println(state);
+    }
+
+    radio0.startReceive();
+    enableInterruptRadio = true;
   }
-  ledBlink(8, LED_COLOR_WHITE);
-  return true;
 }

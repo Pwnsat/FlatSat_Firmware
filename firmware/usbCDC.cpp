@@ -45,7 +45,7 @@ static void obcWaitConnectionCore1(void) {
 void obcConfigureCore0(void) {
   obcSetupUSB();
 
-  Serial.begin(115200);
+  Serial.begin(921600);
   obcWaitConnectionCore0();
 
   if (CFG_TUD_CDC < 2) {
@@ -59,7 +59,7 @@ void obcConfigureCore0(void) {
 
 void obcConfigureCore1(void) {
   obcSetupUSB();
-  USBSpaceCan.begin(115200);
+  USBSpaceCan.begin(921600);
   obcResetUSBStack();
   obcWaitConnectionCore1();
   USBSpaceCan.print("[INFO] SPACECAN Bus Interface\r\n");

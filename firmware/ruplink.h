@@ -14,6 +14,9 @@
 #define UPLINK_SF (7)
 #define UPLINK_CR (5)
 
+typedef void (*radioPacketReceivedCb)(uint8_t *buffer, uint16_t buffer_len);
+
 void uplinkRadioConfigure(void);
-bool uplinkRadioTransmit(uint8_t *buffer, uint16_t buffer_len);
+void uplinkRadioRegisterCb(radioPacketReceivedCb recv_cb);
+void uplinkRadioCheckPacketReceived(void);
 #endif // FIRMWARE_RUPLINK_H

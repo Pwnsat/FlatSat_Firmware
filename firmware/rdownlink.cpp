@@ -12,86 +12,63 @@
 #include <RadioLib.h>
 #include <SPI.h>
 
-static SPIClassRP2040 spiRadio0(spi0,
-    PIN_SPI_RADIO1_CIPO,
-    PIN_RADIO1_NSS,
-    PIN_SPI_RADIO1_SCK,
-    PIN_SPI_RADIO1_COPI);
-SX1262 radio0 = new Module(PIN_RADIO1_NSS, PIN_RADIO1_DIO1, PIN_RADIO1_RST,
-                            PIN_RADIO1_BSY, spiRadio0);
+static SPIClassRP2040 spiRadio1(spi0, PIN_SPI_RADIO1_CIPO, PIN_RADIO1_NSS,
+                                PIN_SPI_RADIO1_SCK, PIN_SPI_RADIO1_COPI);
+SX1262 radio1 = new Module(PIN_RADIO1_NSS, PIN_RADIO1_DIO1, PIN_RADIO1_RST,
+                           PIN_RADIO1_BSY, spiRadio1);
 
-static radioPacketReceivedCb radi_recv_cb = NULL;
+static int transmissionState = RADIOLIB_ERR_NONE;
 
-volatile bool receivedFlag = false;
-volatile bool enableInterruptRadio = true;
+volatile bool transmittedFlag = false;
+
+static void setTransmitionFlag(void) { transmittedFlag = true; }
 
 static void log_line(const char *type, const char *msg) {
   Serial.printf("[%s] %s\n", type, msg);
 }
 
-static void radio_received_flag(void) {
-  if (!enableInterruptRadio) {
-    return;
-  }
-  receivedFlag = true;
-}
-
-void downlinkRadioRegisterCb(radioPacketReceivedCb recv_cb) {
-  radi_recv_cb = recv_cb;
-}
-
 void downlinkRadioConfigure(void) {
-  spiRadio0.begin();
+  spiRadio1.begin();
 
-  int state = radio0.begin();
+  int state = radio1.begin();
   if (state != RADIOLIB_ERR_NONE) {
-    log_line("ERROR", "Radio 0 Init Failed");
+    log_line("ERROR", "Radio 1 Init Failed");
     Serial.printf("Error: %d\n", state);
     return;
   }
-  state = radio0.setFrequency(DOWNLINK_FREQ);
-  if (state != RADIOLIB_ERR_NONE) {
-    log_line("ERROR", "Radio 0 Frequency set error");
-    Serial.printf("Error: %d\n", state);
-  }
-  radio0.setBandwidth(DOWNLINK_BW);
-  radio0.setSpreadingFactor(DOWNLINK_SF);
-  radio0.setCodingRate(DOWNLINK_CR);
-  radio0.setRfSwitchPins(RADIOLIB_NC, PIN_RADIO1_ANT_SW);
-  radio0.setPacketReceivedAction(radio_received_flag);
-  radio0.explicitHeader();
-  radio0.setCRC(0);
-  radio0.startReceive();
-  log_line("INFO", "Radio 0 Configured Successfully!");
+  radio1.setFrequency(DOWNLINK_FREQ);
+  radio1.setBandwidth(DOWNLINK_BW);
+  radio1.setSpreadingFactor(DOWNLINK_SF);
+  radio1.setCodingRate(DOWNLINK_CR);
+  radio1.setRfSwitchPins(RADIOLIB_NC, PIN_RADIO1_ANT_SW);
+  radio1.setPacketSentAction(setTransmitionFlag);
+  log_line("INFO", "Radio 1 Configured Successfully!");
 }
 
-void downlinkRadioCheckPacketReceived(void) {
-  if (receivedFlag) {
-    receivedFlag = false;
-    enableInterruptRadio = false;
+bool downlinkRadioTransmit(uint8_t *buffer, uint16_t buffer_len) {
+  int state = radio1.transmit(buffer, buffer_len);
+  if (state != RADIOLIB_ERR_NONE) {
+    log_line("ERROR", "Radio 1 Transmition Error!");
+    Serial.printf("Error: %d\n", state);
+    ledBlink(8, LED_COLOR_RED);
+    return false;
+  }
+  ledBlink(8, LED_COLOR_WHITE);
+  return true;
+}
 
-    int recvLen = radio0.getPacketLength();
-    byte byteArr[recvLen];
-    int state = radio0.readData(byteArr, recvLen);
-    if (state == RADIOLIB_ERR_NONE || state == RADIOLIB_ERR_CRC_MISMATCH) {
-      if (radi_recv_cb != NULL) {
-        radi_recv_cb(byteArr, recvLen);
-      } else {
-        Serial.print("[INFO] Radio 0 Recv: ");
-        Serial.write(byteArr, recvLen);
-        Serial.println();
-        Serial.print("[INFO] Radio 0 RSSI: ");
-        Serial.println(radio0.getRSSI());
-        Serial.print("[INFO] Radio 0 SNR: ");
-        Serial.println(radio0.getSNR());
-      }
-      ledBlink(8, LED_COLOR_BLUE);
-    } else {
-      Serial.print("[SYS - Radio] Recv Error: ");
-      Serial.println(state);
+void downlinkRadioTransmitNBlock(uint8_t *buffer, uint16_t buffer_len) {
+  transmissionState = radio1.startTransmit(buffer, buffer_len);
+}
+
+void downlinkRadioCheckTransmition(void) {
+  if (transmittedFlag) {
+    transmittedFlag = false;
+    if (transmissionState != RADIOLIB_ERR_NONE) {
+      log_line("ERROR", "Radio 1 Transmition Error!");
+      Serial.printf("Error: %d\n", transmissionState);
+      ledBlink(8, LED_COLOR_RED);
     }
-
-    radio0.startReceive();
-    enableInterruptRadio = true;
+    radio1.finishTransmit();
   }
 }

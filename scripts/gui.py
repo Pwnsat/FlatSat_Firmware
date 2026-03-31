@@ -186,10 +186,10 @@ def build_ui(state):
     t1_state = get_thruster_state(thr['t1_state'])
     thruster_text = f"""
     
-    T1 ({t0_state}): [{'█'*thr['t0']}{' '*(100-thr['t0'])}]
+    T1 ({t0_state}): [{'█'*thr['t0']}{' '*(100-thr['t0'])}] {thr['t0']}
     
     
-    T2 ({t1_state}): [{'█'*thr['t1']}{' '*(100-thr['t1'])}]
+    T2 ({t1_state}): [{'█'*thr['t1']}{' '*(100-thr['t1'])}] {thr['t1']}
     """
     
     log_text = "\n".join(log_buffer)

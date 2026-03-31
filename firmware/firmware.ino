@@ -33,7 +33,8 @@ void setup() {
 void setup1() { obcConfigureCore1(); }
 
 void loop() {
-  downlinkRadioCheckPacketReceived();
+  uplinkRadioCheckPacketReceived();
+  downlinkRadioCheckTransmition();
   telemetryRadioWorker();
 }
 

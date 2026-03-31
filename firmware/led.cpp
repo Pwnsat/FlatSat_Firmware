@@ -9,11 +9,13 @@
 #include "pins.h"
 #include <NeoPixelBus.h>
 
-NeoPixelBus<NeoGrbFeature, NeoWs2812xMethod> strip(LED_PIXEL_COUNT, PIN_RGB_LED);
+NeoPixelBus<NeoGrbFeature, NeoWs2812xMethod> strip(LED_PIXEL_COUNT,
+                                                   PIN_RGB_LED);
 
 RgbColor ledColor_red(colorSaturation, 0, 0);
 RgbColor ledColor_green(0, colorSaturation, 0);
 RgbColor ledColor_blue(0, 0, colorSaturation);
+RgbColor ledColor_yellow(colorSaturation, colorSaturation, 0);
 RgbColor ledColor_white(colorSaturation);
 RgbColor ledColor_black(0);
 
@@ -57,6 +59,9 @@ RgbColor ledColorSelector(led_color_t color) {
     break;
   case LED_COLOR_WHITE:
     return ledColor_white;
+    break;
+  case LED_COLOR_YELLOW:
+    return ledColor_yellow;
     break;
   default:
     return ledColor_red;
