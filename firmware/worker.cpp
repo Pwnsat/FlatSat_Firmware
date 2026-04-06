@@ -16,12 +16,37 @@
 #include "usbCDC.h"
 #include <Arduino.h>
 
-void softwareReset() { watchdog_reboot(0, 0, 0); }
+#define CHUNK_SIZE 16
 
 typedef struct {
   unsigned long interval;
   unsigned long previous;
 } timeout_worker_t;
+
+const uint8_t image_data[255] = {
+    0x00, 0x1F, 0x04, 0x20, 0xEB, 0x00, 0x00, 0x00, 0x35, 0x00, 0x00, 0x00,
+    0x31, 0x00, 0x00, 0x00, 0x4D, 0x75, 0x01, 0x03, 0x7A, 0x00, 0xC4, 0x00,
+    0x1D, 0x00, 0x00, 0x00, 0x00, 0x23, 0x02, 0x88, 0x9A, 0x42, 0x03, 0xD0,
+    0x43, 0x88, 0x04, 0x30, 0x91, 0x42, 0xF7, 0xD1, 0x18, 0x1C, 0x70, 0x47,
+    0x30, 0xBF, 0xFD, 0xE7, 0xF4, 0x46, 0x00, 0xF0, 0x05, 0xF8, 0xA7, 0x48,
+    0x00, 0x21, 0x01, 0x60, 0x41, 0x60, 0xE7, 0x46, 0xA5, 0x48, 0x00, 0x21,
+    0xC9, 0x43, 0x01, 0x60, 0x41, 0x60, 0x70, 0x47, 0xCA, 0x9B, 0x0D, 0x5B,
+    0xF9, 0x1D, 0x00, 0x00, 0x28, 0x43, 0x29, 0x20, 0x32, 0x30, 0x32, 0x30,
+    0x20, 0x46, 0x6F, 0x6C, 0x6C, 0x6F, 0x20, 0x54, 0x68, 0x65, 0x20, 0x57,
+    0x68, 0x74, 0x65, 0x20, 0x52, 0x61, 0x62, 0x69, 0x74, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2D, 0x03, 0x4C, 0x33,
+    0x57, 0x03, 0x54, 0x33, 0x8F, 0x03, 0x4D, 0x53, 0xB9, 0x26, 0x53, 0x34,
+    0xAD, 0x26, 0x4D, 0x43, 0x1D, 0x26, 0x43, 0x34, 0x05, 0x26, 0x55, 0x42,
+    0x91, 0x25, 0x44, 0x54, 0xA9, 0x01, 0x44, 0x45, 0xAF, 0x01, 0x57, 0x56,
+    0x45, 0x01, 0x49, 0x46, 0x91, 0x24, 0x45, 0x58, 0xE5, 0x23, 0x52, 0x45,
+    0x6D, 0x23, 0x52, 0x50, 0xB5, 0x23, 0x46, 0x43, 0x51, 0x23, 0x43, 0x58,
+    0x21, 0x23, 0x00, 0x00, 0x47, 0x52, 0x50, 0x00, 0x43, 0x52, 0x58, 0x00,
+    0x53, 0x46, 0xCC, 0x01, 0x53, 0x44, 0x4C, 0x02, 0x46, 0x5A, 0xCA, 0x01,
+    0x46, 0x53, 0x34, 0x27, 0x46, 0x45, 0x28, 0x2E, 0x44, 0x53, 0x30, 0x2E,
+    0x44, 0x45, 0xA4, 0x3D, 0x00, 0x00, 0x7D, 0x48, 0x01, 0x68, 0x00, 0x29,
+    0x28, 0xD1, 0xFF, 0xF7, 0x9F, 0xFF, 0x7B, 0x49, 0x0A, 0x68, 0x53, 0x0E,
+    0x01, 0xD3, 0x0A,
+};
 
 static timeout_worker_t t_tm_data = {.interval = 1000, .previous = 0};
 static timeout_worker_t t_acc_data = {.interval = 100, .previous = 0};
@@ -30,50 +55,29 @@ static timeout_worker_t t_hb_thruster_data = {.interval = 500, .previous = 0};
 
 static timeout_worker_t t_radio_tm_data = {.interval = 10500, .previous = 0};
 static timeout_worker_t t_radio_sync = {.interval = 5000, .previous = 0};
+static timeout_worker_t t_radio_idle = {.interval = 20000, .previous = 0};
 static timeout_worker_t t_radio_beacon = {.interval = 15000, .previous = 0};
 
-static void printHexDump(const uint8_t *data, size_t len) {
-  const size_t bytesPerLine = 32;
-  char ascii[bytesPerLine + 1];
-  ascii[bytesPerLine] = '\0';
+static uint32_t image_data_len = 255;
+static bool block_tx = false;
 
-  for (size_t i = 0; i < len; i++) {
-    if (i % bytesPerLine == 0) {
-      if (i != 0) {
-        Serial.print("  |");
+static uint8_t crc8_compute(const uint8_t *data, uint32_t len) {
+  uint8_t crc = 0x00;
 
-        Serial.println(ascii);
+  for (uint32_t i = 0; i < len; i++) {
+    crc ^= data[i];
+    for (uint8_t j = 0; j < 8; j++) {
+      if (crc & 0x80) {
+        crc = (crc << 1) ^ 0x07;
+      } else {
+        crc <<= 1;
       }
-      Serial.printf("%08X  ", (unsigned int)i);
-    }
-
-    Serial.printf("%02X ", data[i]);
-
-    ascii[i % bytesPerLine] = (data[i] >= 32 && data[i] <= 126) ? data[i] : '.';
-  }
-
-  size_t remaining = len % bytesPerLine;
-  if (remaining > 0) {
-    for (size_t i = remaining; i < bytesPerLine; i++) {
-      Serial.print("   ");
     }
   }
-
-  Serial.print("  |");
-  ascii[remaining == 0 ? bytesPerLine : remaining] = '\0';
-  Serial.println(ascii);
+  return crc;
 }
 
-static void logger_spp(space_packet_t *packet) {
-  uint16_t type = (packet->header.identification >> 11) & 0x1;
-  uint16_t apid = packet->header.identification & 0x7FF;
-
-  uint16_t seq_flags = (packet->header.sequence >> 14) & 0x3;
-  uint16_t seq_count = packet->header.sequence & 0x3FFF;
-  Serial.printf("[%s - SPP] APID=0x%04X SEQ=%d LEN=%d FLAGS=%d\n",
-                type == SPP_PTYPE_TM ? "TM" : "TC", apid, seq_count,
-                packet->header.length, seq_flags);
-}
+static void softwareReset() { watchdog_reboot(0, 0, 0); }
 
 static inline int16_t float_to_fixed(float val, float scale) {
   return (int16_t)(val * scale);
@@ -81,6 +85,40 @@ static inline int16_t float_to_fixed(float val, float scale) {
 
 static inline float fixed_to_float(int16_t val, float scale) {
   return ((float)val) / scale;
+}
+
+static inline uint16_t to_be16(uint16_t x) { return (x >> 8) | (x << 8); }
+
+static void logger_spp(space_packet_t *packet) {
+  uint16_t id_raw = BE_TO_HOST16(packet->header.identification);
+  uint16_t seq_raw = BE_TO_HOST16(packet->header.sequence);
+  uint16_t len_raw = BE_TO_HOST16(packet->header.length);
+
+  uint8_t type = (id_raw >> 12) & 0x01;
+  uint8_t sec_hdr = (id_raw >> 11) & 0x01;
+  uint16_t apid = id_raw & 0x07FF;
+
+  uint8_t seq_flags = (seq_raw >> 14) & 0x03;
+  uint16_t seq_count = seq_raw & 0x3FFF;
+  Serial.printf("[%s - SPP] APID=0x%03X SEQ=%d LEN=%d FLAGS=%d SEC_HDR=%s\n",
+                (type == SPP_PTYPE_TM) ? "TM" : "TC", apid, seq_count,
+                len_raw + 1, seq_flags, sec_hdr ? "YES" : "NO");
+}
+
+static void logger_spp_tc(space_packet_t *packet) {
+  uint16_t id = packet->header.identification;
+  uint16_t seq = packet->header.sequence;
+  uint16_t len = packet->header.length;
+
+  uint8_t type = (id >> 12) & 0x01;
+  uint8_t sec_hdr = (id >> 11) & 0x01;
+  uint16_t apid = id & 0x07FF;
+
+  uint8_t flags = (seq >> 14) & 0x03;
+  uint16_t count = seq & 0x3FFF;
+
+  Serial.printf("[TC - SPP] APID=0x%03X SEQ=%d LEN=%d FLAGS=%d SEC_HDR=%s\n",
+                apid, count, len + 1, flags, sec_hdr ? "YES" : "NO");
 }
 
 static void telemetrySCSendFloatFrame(uint8_t can_id, float metric) {
@@ -151,10 +189,9 @@ static void telemetrySPPPackFrame(float x, float y, float z, float t, float tm,
     ledBlink(8, LED_COLOR_RED);
     return;
   }
-
-  downlinkRadioTransmitNBlock(
-      (uint8_t *)&space_packet,
-      (SPP_PRIMARY_HEADER_LEN + space_packet.header.length));
+  const uint16_t total_len =
+      SPP_PRIMARY_HEADER_LEN + (HOST_TO_BE16(space_packet.header.length) + 1);
+  downlinkRadioTransmitNBlock((uint8_t *)&space_packet, total_len);
   logger_spp(&space_packet);
 }
 
@@ -179,9 +216,9 @@ static void telemetrySPPTransmitVersion(void) {
     return;
   }
 
-  downlinkRadioTransmitNBlock(
-      (uint8_t *)&space_packet,
-      (SPP_PRIMARY_HEADER_LEN + space_packet.header.length));
+  const uint16_t total_len =
+      SPP_PRIMARY_HEADER_LEN + (HOST_TO_BE16(space_packet.header.length) + 1);
+  downlinkRadioTransmitNBlock((uint8_t *)&space_packet, total_len);
   logger_spp(&space_packet);
 }
 
@@ -199,9 +236,25 @@ static void telemetrySPPTransmitPingSync(void) {
     return;
   }
 
-  downlinkRadioTransmitNBlock(
-      (uint8_t *)&space_packet,
-      (SPP_PRIMARY_HEADER_LEN + space_packet.header.length));
+  const uint16_t total_len =
+      SPP_PRIMARY_HEADER_LEN + (HOST_TO_BE16(space_packet.header.length) + 1);
+  downlinkRadioTransmitNBlock((uint8_t *)&space_packet, total_len);
+  logger_spp(&space_packet);
+}
+
+static void telemetrySPPTransmitIDLE(void) {
+  space_packet_t space_packet;
+  const int ret = spp_idle_build_packet(&space_packet);
+  if (ret != SPP_ERROR_NONE) {
+    Serial.print("[ERROR] Telemetry SPP Pack Frame: ");
+    Serial.println(ret);
+    ledBlink(8, LED_COLOR_RED);
+    return;
+  }
+
+  const uint16_t total_len =
+      SPP_PRIMARY_HEADER_LEN + (HOST_TO_BE16(space_packet.header.length) + 1);
+  downlinkRadioTransmitNBlock((uint8_t *)&space_packet, total_len);
   logger_spp(&space_packet);
 }
 
@@ -219,9 +272,9 @@ static void telemetrySPPTransmitPingAck(void) {
     return;
   }
 
-  downlinkRadioTransmitNBlock(
-      (uint8_t *)&space_packet,
-      (SPP_PRIMARY_HEADER_LEN + space_packet.header.length));
+  const uint16_t total_len =
+      SPP_PRIMARY_HEADER_LEN + (HOST_TO_BE16(space_packet.header.length) + 1);
+  downlinkRadioTransmitNBlock((uint8_t *)&space_packet, total_len);
   logger_spp(&space_packet);
 }
 
@@ -239,10 +292,81 @@ static void telemetrySPPTransmitBeacon(void) {
     return;
   }
 
-  downlinkRadioTransmitNBlock(
-      (uint8_t *)&space_packet,
-      (SPP_PRIMARY_HEADER_LEN + space_packet.header.length));
+  const uint16_t total_len =
+      SPP_PRIMARY_HEADER_LEN + (HOST_TO_BE16(space_packet.header.length) + 1);
+  downlinkRadioTransmitNBlock((uint8_t *)&space_packet, total_len);
   logger_spp(&space_packet);
+}
+
+static void telemetrySPPTransmitFlash(void) {
+  block_tx = true;
+  const uint32_t total_chunks = (image_data_len + CHUNK_SIZE - 1) / CHUNK_SIZE;
+
+  for (uint32_t i = 0; i < total_chunks; i++) {
+    uint32_t offset = i * CHUNK_SIZE;
+    uint32_t remaining = image_data_len - offset;
+    uint32_t size = (remaining >= CHUNK_SIZE) ? CHUNK_SIZE : remaining;
+
+    uint8_t buffer[MAX_PAYLOAD_CHUNK];
+    uint16_t buff_offset = 0;
+
+    memset(buffer, 0, sizeof(buffer));
+
+    buffer[buff_offset++] = SPACECRAFT_ID;
+
+    /* Ancillary Data Field */
+    // Packet Index
+    buffer[buff_offset++] = (uint8_t)(i & 0xFF);
+    buffer[buff_offset++] = (uint8_t)((i >> 8) & 0xFF);
+    // Offset
+    buffer[buff_offset++] = (uint8_t)(offset & 0xFF);
+    buffer[buff_offset++] = (uint8_t)((offset >> 8) & 0xFF);
+    // Remaining
+    buffer[buff_offset++] = (uint8_t)(remaining & 0xFF);
+    buffer[buff_offset++] = (uint8_t)((remaining >> 8) & 0xFF);
+
+    if (buff_offset + size + 1 > MAX_PAYLOAD_CHUNK) {
+      Serial.println("[ERROR] Payload overflow");
+      block_tx = false;
+      return;
+    }
+
+    // Data
+    memcpy(&buffer[buff_offset], &image_data[offset], size);
+    buff_offset += size;
+
+    // CRC
+    buffer[buff_offset++] = crc8_compute(&image_data[offset], size);
+    buffer[buff_offset++] = '\0';
+
+    space_packet_t space_packet;
+    const uint8_t flag = i == 0                    ? SPP_GROUP_FLAG_START
+                         : (i == total_chunks - 1) ? SPP_GROUP_FLAG_END
+                                                   : SPP_GROUP_FLAG_CONT;
+    int ret = spp_tm_build_packet(&space_packet, flag, SPP_SECHEAD_FLAG_PRESENT,
+                                  6, SPP_APID_TM_FLASH, buffer, buff_offset);
+    if (ret != SPP_ERROR_NONE) {
+      Serial.print("[ERROR] Telemetry SPP Pack Frame: ");
+      Serial.println(ret);
+      ledBlink(8, LED_COLOR_RED);
+      block_tx = false;
+      return;
+    }
+
+    const uint16_t total_len =
+        SPP_PRIMARY_HEADER_LEN + (HOST_TO_BE16(space_packet.header.length) + 1);
+    if (!downlinkRadioTransmit((uint8_t *)&space_packet, total_len)) {
+      Serial.print("[ERROR] Transmiting: ");
+      Serial.println(ret);
+      ledBlink(8, LED_COLOR_RED);
+      block_tx = false;
+      return;
+    }
+    logger_spp(&space_packet);
+
+    delay(100);
+  }
+  block_tx = false;
 }
 
 static void telemetryWorker(void) {
@@ -296,6 +420,10 @@ static void thrusterHBWorker(void) {
 }
 
 void telemetryRadioWorker(void) {
+  if (block_tx) {
+    return;
+  }
+
   if (millis() - t_radio_tm_data.previous > t_radio_tm_data.interval) {
     t_radio_tm_data.previous = millis();
     float tm, p, alt, hum;
@@ -314,6 +442,10 @@ void telemetryRadioWorker(void) {
     t_radio_sync.previous = millis();
     telemetrySPPTransmitPingSync();
   }
+  if (millis() - t_radio_idle.previous > t_radio_idle.interval) {
+    t_radio_idle.previous = millis();
+    telemetrySPPTransmitIDLE();
+  }
 }
 
 void telemetrySCWorker(void) {
@@ -323,34 +455,6 @@ void telemetrySCWorker(void) {
   accWorker();
   telemetryWorker();
   thrusterWorker();
-}
-
-static inline uint16_t to_be16(uint16_t x) { return (x >> 8) | (x << 8); }
-
-static void spp_print_packet_details(space_packet_t *packet) {
-  uint16_t version = (packet->header.identification >> 13) & 0x7;
-  uint16_t type = (packet->header.identification >> 11) & 0x1;
-  uint16_t sec_header = (packet->header.identification >> 10) & 0x1;
-  uint16_t apid = packet->header.identification & 0x7FF;
-
-  uint16_t seq_flags = (packet->header.sequence >> 14) & 0x3;
-  uint16_t seq_count = packet->header.sequence & 0x3FFF;
-
-  Serial.println("=== Space Packet Header ===");
-  Serial.printf(" Version:             %u\n", version);
-  Serial.printf(" Type:                %02X\n", type);
-  Serial.printf(" Secondary Header:    %u\n", sec_header);
-  Serial.printf(" APID:                0x%04X\n", apid);
-  Serial.printf(" Sequence Flags:      0x%X (%s)\n", seq_flags,
-                seq_flags == SPP_GROUP_FLAG_UNSEGMENTED ? "Unsegmented"
-                : seq_flags == SPP_GROUP_FLAG_START     ? "Start"
-                : seq_flags == SPP_GROUP_FLAG_CONT      ? "Continuation"
-                                                        : "End");
-  Serial.printf(" Sequence Count:      %u\n", seq_count);
-  Serial.printf(" Data Length:         %u\n", packet->header.length);
-
-  Serial.println("=== Payload Dump (Hex) ===");
-  printHexDump(packet->data, packet->header.length + 1);
 }
 
 void commandApidHandler(space_packet_t *space_packet) {
@@ -383,24 +487,30 @@ void commandApidHandler(space_packet_t *space_packet) {
   } else if (apid == SPP_APID_TC_BROADCAST_MSG) {
     uint16_t frequency = ((uint16_t)space_packet->data[0] << 8) |
                          (uint16_t)space_packet->data[1];
-    size_t buffer_len = space_packet->header.length - 1;
-    uint8_t buffer[buffer_len] = {0};
-    memcpy(buffer, space_packet->data + 2, buffer_len);
+    size_t payload_total = space_packet->header.length + 1;
+    size_t msg_len = payload_total - 2;
+    uint8_t buffer_msg[SPP_MAX_PAYLOAD_CHUNK] = {0};
+
+    memcpy(buffer_msg, space_packet->data + 2, msg_len);
+
     space_packet_t space_packet;
     const int ret = spp_tm_build_packet(
         &space_packet, SPP_GROUP_FLAG_UNSEGMENTED, SPP_SECHEAD_FLAG_NOPRESENT,
-        0, SPP_APID_TM_BROADCAST_MSG, buffer, buffer_len);
+        0, SPP_APID_TM_BROADCAST_MSG, buffer_msg, msg_len);
     if (ret != SPP_ERROR_NONE) {
       Serial.print("[ERROR] Telemetry SPP Pack Frame: ");
       Serial.println(ret);
       ledBlink(8, LED_COLOR_RED);
       return;
     }
-
-    downlinkRadioTransmitBroadcast(
-        frequency, (uint8_t *)&space_packet,
-        (SPP_PRIMARY_HEADER_LEN + space_packet.header.length));
+    const uint16_t total_len =
+        SPP_PRIMARY_HEADER_LEN + (HOST_TO_BE16(space_packet.header.length) + 1);
+    downlinkRadioTransmitBroadcast(frequency, (uint8_t *)&space_packet,
+                                   total_len);
     logger_spp(&space_packet);
+  } else if (apid == SPP_APID_TM_FLASH) {
+    ledBlink(4, LED_COLOR_YELLOW);
+    telemetrySPPTransmitFlash();
   } else {
     Serial.printf("[ERROR] Unknown APID: 0x%02X \n", apid);
   }
@@ -415,6 +525,6 @@ void commandHandler(uint8_t *buffer, uint16_t buffer_len) {
     ledBlink(8, LED_COLOR_YELLOW);
     return;
   }
-  logger_spp(&space_packet);
+  logger_spp_tc(&space_packet);
   commandApidHandler(&space_packet);
 }

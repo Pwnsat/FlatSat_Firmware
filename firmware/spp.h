@@ -16,6 +16,11 @@
 #define SPP_MAX_PAYLOAD_CHUNK 200
 #define SPP_PRIMARY_HEADER_LEN (6)
 
+#define HOST_TO_BE16(n)                                                        \
+  (uint16_t)((((uint16_t)(n) & 0xFF00) >> 8) | (((uint16_t)(n) & 0x00FF) << 8))
+#define BE_TO_HOST16(n)                                                        \
+  (uint16_t)((((uint16_t)(n) & 0xFF00) >> 8) | (((uint16_t)(n) & 0x00FF) << 8))
+
 enum {
   SPP_ERROR_NONE = 0,
   SPP_ERROR_PAYLOAD_LEN = -1,

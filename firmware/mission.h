@@ -39,6 +39,7 @@
 // Communications
 #define SPP_APID_TC_SET_BEACON_RATE 0x05
 #define SPP_APID_TC_BROADCAST_MSG 0x06
+#define SPP_APID_TC_FLASH 0x07
 /* APIDS TM */
 // On Board Computer
 #define SPP_APID_TM_PING 0x01
@@ -49,6 +50,7 @@
 // Communications
 #define SPP_APID_TM_SET_BEACON_RATE 0x05
 #define SPP_APID_TM_BROADCAST_MSG 0x06
+#define SPP_APID_TM_FLASH 0x07
 #define SPP_APID_TM_SEND_TM 0x08
 
 #endif // FIRMWARE_MISSION_H

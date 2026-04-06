@@ -176,7 +176,7 @@ def build_ui(state):
     acc_table.add_row("X", str(acc["x"]))
     acc_table.add_row("Y", str(acc["y"]))
     acc_table.add_row("Z", str(acc["z"]))
-    acc_table.add_row("TEMP", str(acc["tmp"]))
+    acc_table.add_row("TEMP", f"{acc["tmp"]} °C")
 
     # =========================
     # THRUSTERS PANEL

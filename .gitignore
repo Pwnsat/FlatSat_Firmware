@@ -56,5 +56,6 @@ dkms.conf
 .DS_Store
 .pio/
 .vscode/
-.DS_Store
 build/
+.idea
+.vscode

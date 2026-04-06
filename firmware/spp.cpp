@@ -29,23 +29,19 @@ static int spp_build_packet(space_packet_t *space_packet, uint8_t type,
                             uint16_t sequence_count, const uint8_t *data,
                             uint16_t data_len) {
 
-  if (data_len > SPP_MAX_PAYLOAD_CHUNK) {
-    return -1;
-  }
+  uint16_t packet_id = 0;
+  packet_id |= (CCSDS_SPP_VERSION & 0x07) << 13;
+  packet_id |= (type & 0x01) << 12;
+  packet_id |= (sec_header & 0x01) << 11;
+  packet_id |= (apid & 0x07FF);
 
-  memset(space_packet, 0, sizeof(space_packet_t));
+  uint16_t seq_ctrl = 0;
+  seq_ctrl |= (flag & 0x03) << 14;
+  seq_ctrl |= (sequence_count & 0x3FFF);
 
-  space_packet->header.identification =
-      ((CCSDS_SPP_VERSION << 13) | (type << 11) | (sec_header << 10) |
-       (apid & 0x7FF));
-
-  space_packet->header.sequence = (flag << 14) | (sequence_count & 0x3FFF);
-
-  if (sec_header == SPP_SECHEAD_FLAG_PRESENT && sec_header_len == 0) {
-    return SPP_ERROR_MALFORMED_SEC_HEADER;
-  }
-
-  space_packet->header.length = data_len + sec_header_len - 1;
+  space_packet->header.identification = HOST_TO_BE16(packet_id);
+  space_packet->header.sequence = HOST_TO_BE16(seq_ctrl);
+  space_packet->header.length = HOST_TO_BE16(data_len + sec_header_len - 1);
 
   if (data_len > 0 && data != NULL) {
     memcpy(space_packet->data, data, data_len);
@@ -75,9 +71,10 @@ int spp_tm_build_packet(space_packet_t *space_packet, uint8_t flag,
 }
 
 int spp_idle_build_packet(space_packet_t *space_packet) {
-  const uint16_t buffer_len = 9;
-  const uint8_t buffer_idle[buffer_len] = {0x65, 0x6b, 0x6f, 0x70, 0x61,
-                                           0x72, 0x74, 0x79, 0x00};
+  const uint16_t buffer_len = 14;
+  const uint8_t buffer_idle[buffer_len] = {0x48, 0x61, 0x63, 0x6b, 0x54,
+                                           0x68, 0x65, 0x57, 0x6f, 0x72,
+                                           0x6c, 0x64, 0x21, 0x00};
   return spp_build_packet(
       space_packet, SPP_PTYPE_TM, SPP_GROUP_FLAG_UNSEGMENTED,
       SPP_SECHEAD_FLAG_NOPRESENT, 0, SPP_APID_IDLE, 0, buffer_idle, buffer_len);
@@ -105,8 +102,6 @@ int spp_unpack_packet(space_packet_t *space_packet, const uint8_t *buffer,
   if (space_packet->header.length > SPP_MAX_PAYLOAD_CHUNK) {
     return SPP_ERROR_PAYLOAD_LEN;
   }
-  // if (space_packet->header.length > buffer_len - SPP_PRIMARY_HEADER_LEN) {
-  // return SPP_ERROR_PAYLOAD_LEN_OUT_LIMITS;}
 
   if (space_packet->header.length > 0 && buffer != NULL) {
     memcpy(space_packet->data, buffer + SPP_PRIMARY_HEADER_LEN,
