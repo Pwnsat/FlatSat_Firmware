@@ -84,7 +84,7 @@ void radioConfigure() {
   if (uplink_cfg.active) {
     uplink.setFrequency(916);
     uplink.setBandwidth(250);
-    uplink.setSpreadingFactor(12);
+    uplink.setSpreadingFactor(11);
     uplink.setPreambleLength(8);
     uplink.setCodingRate(5);
     // uplink.setOutputPower(-11);
