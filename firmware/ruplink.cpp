@@ -136,9 +136,9 @@ void uplinkRadioCheckPacketReceived(void) {
     int state = radio0.readData(byteArr, recvLen);
     if (state == RADIOLIB_ERR_NONE || state == RADIOLIB_ERR_CRC_MISMATCH) {
       if (radi_recv_cb != NULL) {
+        printHexDump(byteArr, recvLen);
         uint8_t parsed[recvLen]; // worst case
         size_t parsedLen = hexStringToBytes(byteArr, recvLen, parsed);
-        printHexDump(parsed, parsedLen);
         radi_recv_cb(parsed, parsedLen);
       } else {
         Serial.print("[INFO] Radio 0 Recv: ");

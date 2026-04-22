@@ -10,6 +10,7 @@
 #include "ruplink.h"
 #include "sensors.h"
 #include "usbCDC.h"
+#include "usbUplink.h"
 #include "worker.h"
 
 typedef struct {
@@ -22,18 +23,21 @@ static timeout_worker_t_t t_tra = {.inverval = 5000, .previous = 0};
 void setup() {
   obcSetupUSB();
   ledConfigure();
-  ledTurnWhite();
   obcConfigureCore0();
   sensorsConfigure();
   uplinkRadioConfigure();
   downlinkRadioConfigure();
   uplinkRadioRegisterCb(commandHandler);
+  ledTurnWhite();
+  delay(500);
+  ledTurnOff();
 }
 
 void setup1() { obcConfigureCore1(); }
 
 void loop() {
   uplinkRadioCheckPacketReceived();
+  usbSerialUplinkWorker();
   downlinkRadioCheckTransmition();
   telemetryRadioWorker();
 }
