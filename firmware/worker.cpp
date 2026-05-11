@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  */
-#include "frame.h"
+
 #include "hardware/watchdog.h"
 #include "led.h"
 #include "mission.h"
@@ -48,13 +48,8 @@ const uint8_t image_data[255] = {
     0x01, 0xD3, 0x0A,
 };
 
-static timeout_worker_t t_tm_data = {.interval = 1000, .previous = 0};
-static timeout_worker_t t_acc_data = {.interval = 100, .previous = 0};
-static timeout_worker_t t_thruster_data = {.interval = 100, .previous = 0};
-static timeout_worker_t t_hb_thruster_data = {.interval = 500, .previous = 0};
-
 static timeout_worker_t t_radio_tm_data = {.interval = 10500, .previous = 0};
-static timeout_worker_t t_radio_sync = {.interval = 5000, .previous = 0};
+static timeout_worker_t t_radio_sync = {.interval = 15000, .previous = 0};
 static timeout_worker_t t_radio_idle = {.interval = 20000, .previous = 0};
 static timeout_worker_t t_radio_beacon = {.interval = 15000, .previous = 0};
 
@@ -121,37 +116,14 @@ static void logger_spp_tc(space_packet_t *packet) {
                 apid, count, len + 1, flags, sec_hdr ? "YES" : "NO");
 }
 
-static void telemetrySCSendFloatFrame(uint8_t can_id, float metric) {
-  int16_t t_fixed = float_to_fixed(metric, 100.0f);
-  uint8_t payload[2];
-  payload[0] = CANID_TM;
-  payload[1] = (uint8_t)(t_fixed & 0xFF);
-  payload[2] = (uint8_t)((t_fixed >> 8) & 0xFF);
-
-  spacecan_frame_t f;
-  sc_build_reply(&f, can_id, payload, 3);
-  obcWriteFrame(&f);
+static void transmitPacketRadioUSB(uint8_t *buffer, ssize_t buffer_len) {
+  obcUSBTransmitFrame(buffer, buffer_len);
+  downlinkRadioTransmitNBlock(buffer, buffer_len);
 }
 
-static void telemetrySCSendU16Frame(uint8_t can_id, uint16_t metric) {
-  uint8_t payload[2];
-  payload[0] = CANID_TM;
-  payload[1] = (uint8_t)(metric & 0xFF);
-  payload[2] = (uint8_t)((metric >> 8) & 0xFF);
-
-  spacecan_frame_t f;
-  sc_build_reply(&f, can_id, payload, 3);
-  obcWriteFrame(&f);
-}
-
-static void telemetrySCSendU8Frame(uint8_t can_id, uint8_t metric) {
-  uint8_t payload[2];
-  payload[0] = CANID_TM;
-  payload[1] = metric;
-
-  spacecan_frame_t f;
-  sc_build_reply(&f, can_id, payload, 2);
-  obcWriteFrame(&f);
+static bool transmitPacketRadioUSBBlock(uint8_t *buffer, ssize_t buffer_len) {
+  obcUSBTransmitFrame(buffer, buffer_len);
+  return downlinkRadioTransmit(buffer, buffer_len);
 }
 
 static void telemetrySPPPackFillFloatToBuffer(uint8_t *buffer, int *offset,
@@ -191,7 +163,7 @@ static void telemetrySPPPackFrame(float x, float y, float z, float t, float tm,
   }
   const uint16_t total_len =
       SPP_PRIMARY_HEADER_LEN + (HOST_TO_BE16(space_packet.header.length) + 1);
-  downlinkRadioTransmitNBlock((uint8_t *)&space_packet, total_len);
+  transmitPacketRadioUSB((uint8_t *)&space_packet, total_len);
   logger_spp(&space_packet);
 }
 
@@ -218,7 +190,7 @@ static void telemetrySPPTransmitVersion(void) {
 
   const uint16_t total_len =
       SPP_PRIMARY_HEADER_LEN + (HOST_TO_BE16(space_packet.header.length) + 1);
-  downlinkRadioTransmitNBlock((uint8_t *)&space_packet, total_len);
+  transmitPacketRadioUSB((uint8_t *)&space_packet, total_len);
   logger_spp(&space_packet);
 }
 
@@ -238,7 +210,7 @@ static void telemetrySPPTransmitPingSync(void) {
 
   const uint16_t total_len =
       SPP_PRIMARY_HEADER_LEN + (HOST_TO_BE16(space_packet.header.length) + 1);
-  downlinkRadioTransmitNBlock((uint8_t *)&space_packet, total_len);
+  transmitPacketRadioUSB((uint8_t *)&space_packet, total_len);
   logger_spp(&space_packet);
 }
 
@@ -254,7 +226,7 @@ static void telemetrySPPTransmitIDLE(void) {
 
   const uint16_t total_len =
       SPP_PRIMARY_HEADER_LEN + (HOST_TO_BE16(space_packet.header.length) + 1);
-  downlinkRadioTransmitNBlock((uint8_t *)&space_packet, total_len);
+  transmitPacketRadioUSB((uint8_t *)&space_packet, total_len);
   logger_spp(&space_packet);
 }
 
@@ -274,7 +246,7 @@ static void telemetrySPPTransmitPingAck(void) {
 
   const uint16_t total_len =
       SPP_PRIMARY_HEADER_LEN + (HOST_TO_BE16(space_packet.header.length) + 1);
-  downlinkRadioTransmitNBlock((uint8_t *)&space_packet, total_len);
+  transmitPacketRadioUSB((uint8_t *)&space_packet, total_len);
   logger_spp(&space_packet);
 }
 
@@ -294,7 +266,7 @@ static void telemetrySPPTransmitBeacon(void) {
 
   const uint16_t total_len =
       SPP_PRIMARY_HEADER_LEN + (HOST_TO_BE16(space_packet.header.length) + 1);
-  downlinkRadioTransmitNBlock((uint8_t *)&space_packet, total_len);
+  transmitPacketRadioUSB((uint8_t *)&space_packet, total_len);
   logger_spp(&space_packet);
 }
 
@@ -355,7 +327,7 @@ static void telemetrySPPTransmitFlash(void) {
 
     const uint16_t total_len =
         SPP_PRIMARY_HEADER_LEN + (HOST_TO_BE16(space_packet.header.length) + 1);
-    if (!downlinkRadioTransmit((uint8_t *)&space_packet, total_len)) {
+    if (!transmitPacketRadioUSBBlock((uint8_t *)&space_packet, total_len)) {
       Serial.print("[ERROR] Transmiting: ");
       Serial.println(ret);
       ledBlink(8, LED_COLOR_RED);
@@ -367,56 +339,6 @@ static void telemetrySPPTransmitFlash(void) {
     delay(100);
   }
   block_tx = false;
-}
-
-static void telemetryWorker(void) {
-  if (millis() - t_tm_data.previous > t_tm_data.interval) {
-    t_tm_data.previous = millis();
-    float tm, p, alt, hum;
-    bmeRead(&tm, &p, &alt, &hum);
-
-    telemetrySCSendFloatFrame(SC_TM_ID_BME_TEMPERATURE, tm);
-    telemetrySCSendFloatFrame(SC_TM_ID_BME_PRESSURE, p);
-    telemetrySCSendFloatFrame(SC_TM_ID_BME_ALTITUDE, alt);
-    telemetrySCSendFloatFrame(SC_TM_ID_BME_HUMIDITY, hum);
-  }
-}
-
-static void accWorker(void) {
-  if (millis() - t_acc_data.previous > t_acc_data.interval) {
-    t_acc_data.previous = millis();
-    float x, y, z, t;
-    accelerometerRead(&x, &y, &z, &t);
-
-    telemetrySCSendFloatFrame(SC_TM_ID_ACCE_X, x);
-    telemetrySCSendFloatFrame(SC_TM_ID_ACCE_Y, y);
-    telemetrySCSendFloatFrame(SC_TM_ID_ACCE_Z, z);
-    telemetrySCSendFloatFrame(SC_TM_ID_ACCE_TMP, t);
-  }
-}
-
-static void thrusterWorker(void) {
-  if (millis() - t_thruster_data.previous > t_thruster_data.interval) {
-    t_thruster_data.previous = millis();
-    const uint8_t thrustert0 = thrusterGetT0Power();
-    const uint8_t thrustert1 = thrusterGetT1Power();
-
-    telemetrySCSendU8Frame(SC_TM_ID_SIM_THRUSTER0, thrustert0);
-    telemetrySCSendU8Frame(SC_TM_ID_SIM_THRUSTER1, thrustert1);
-  }
-}
-
-static void thrusterHBWorker(void) {
-  if (millis() - t_hb_thruster_data.previous > t_hb_thruster_data.interval) {
-    t_hb_thruster_data.previous = millis();
-
-    spacecan_frame_t f0;
-    sc_build_heartbeat(&f0, SC_TM_ID_SIM_THRUSTER0, thrusterGetT0State());
-    obcWriteFrame(&f0);
-    spacecan_frame_t f1;
-    sc_build_heartbeat(&f1, SC_TM_ID_SIM_THRUSTER1, thrusterGetT1State());
-    obcWriteFrame(&f1);
-  }
 }
 
 void telemetryRadioWorker(void) {
@@ -446,15 +368,6 @@ void telemetryRadioWorker(void) {
     t_radio_idle.previous = millis();
     telemetrySPPTransmitIDLE();
   }
-}
-
-void telemetrySCWorker(void) {
-  /* Hearth Workers */
-  thrusterHBWorker();
-  /* TM Workers */
-  accWorker();
-  telemetryWorker();
-  thrusterWorker();
 }
 
 void commandApidHandler(space_packet_t *space_packet) {
@@ -513,6 +426,27 @@ void commandApidHandler(space_packet_t *space_packet) {
     telemetrySPPTransmitFlash();
   } else {
     Serial.printf("[ERROR] Unknown APID: 0x%02X \n", apid);
+    uint16_t packet_len = 19;
+    uint8_t buffer[packet_len] = {0x45, 0x72, 0x72, 0x6f, 0x72, 0x20, 0x55,
+                                  0x6e, 0x6b, 0x6e, 0x6f, 0x77, 0x6e, 0x20,
+                                  0x41, 0x50, 0x49, 0x44, 0x00};
+
+    space_packet_t space_packet;
+    const int ret = spp_tm_build_packet(
+        &space_packet, SPP_GROUP_FLAG_UNSEGMENTED, SPP_SECHEAD_FLAG_NOPRESENT,
+        0, 0x09, buffer, packet_len);
+    if (ret != SPP_ERROR_NONE) {
+      Serial.print("[ERROR] Telemetry SPP Pack Frame: ");
+      Serial.println(ret);
+
+      ledBlink(8, LED_COLOR_RED);
+      return;
+    }
+
+    const uint16_t total_len =
+        SPP_PRIMARY_HEADER_LEN + (HOST_TO_BE16(space_packet.header.length) + 1);
+    transmitPacketRadioUSB((uint8_t *)&space_packet, total_len);
+    logger_spp(&space_packet);
   }
 }
 

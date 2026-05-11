@@ -10,7 +10,6 @@
 #include "ruplink.h"
 #include "sensors.h"
 #include "usbCDC.h"
-#include "usbUplink.h"
 #include "worker.h"
 
 typedef struct {
@@ -28,6 +27,7 @@ void setup() {
   uplinkRadioConfigure();
   downlinkRadioConfigure();
   uplinkRadioRegisterCb(commandHandler);
+  obcUSBPacketRecivedCallback(commandHandler);
   ledTurnWhite();
   delay(500);
   ledTurnOff();
@@ -37,9 +37,8 @@ void setup1() { obcConfigureCore1(); }
 
 void loop() {
   uplinkRadioCheckPacketReceived();
-  usbSerialUplinkWorker();
   downlinkRadioCheckTransmition();
   telemetryRadioWorker();
 }
 
-void loop1() { telemetrySCWorker(); }
+void loop1() { obcUSBRecv(); }

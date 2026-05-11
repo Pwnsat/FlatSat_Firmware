@@ -137,14 +137,14 @@ void uplinkRadioCheckPacketReceived(void) {
     if (state == RADIOLIB_ERR_NONE || state == RADIOLIB_ERR_CRC_MISMATCH) {
       if (radi_recv_cb != NULL) {
         printHexDump(byteArr, recvLen);
-        uint8_t parsed[recvLen]; // worst case
+        uint8_t parsed[recvLen];
         size_t parsedLen = hexStringToBytes(byteArr, recvLen, parsed);
         radi_recv_cb(parsed, parsedLen);
       } else {
         Serial.print("[INFO] Radio 0 Recv: ");
         Serial.write(byteArr, recvLen);
         Serial.println();
-        uint8_t parsed[recvLen]; // worst case
+        uint8_t parsed[recvLen];
         size_t parsedLen = hexStringToBytes(byteArr, recvLen, parsed);
 
         Serial.println("[INFO] Parsed HEX -> RAW:");
