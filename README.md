@@ -41,8 +41,15 @@ Every packet consists of a **Primary Header** (6 bytes) and a **Data Field**.
 |**Telemetry Hijacking**|Data|Antenna / LNA|Eavesdropping on sensitive mission data.|
 |**Logic Bombing**|Application|Custom Python Script|Triggering the `softwareReset()` loop.|
 
-
-# Requirements for Arduino IDLE
+# Installation
+- Download the `firmware.ino.uf2` file from the release page.
+- Put the board into bootloader mode:
+  - Unplug the device.
+  - Press and hold the `BOOT` button.
+  - While holding the button, plug the device back in.
+  - Release the `BOOT` button.
+- Drag and drop the `firmware.ino.uf2` file onto the removable device labeled `RPI-RP2`.
+# Compiling with Arduino IDLE
 
 **Board components**
 - [Arduino Pico boards](https://github.com/earlephilhower/arduino-pico)
